@@ -9,6 +9,51 @@ import json
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "matches.db")
 
+SYNONYMS = {
+    "كوت ديفوار": "ساحل العاج",
+    "ساحل العاج": "كوت ديفوار",
+    "أمريكا": "الولايات المتحدة",
+    "الولايات المتحدة": "أمريكا",
+}
+
+def should_include_match(tour_name, team_a, team_b):
+    tour_normalized = tour_name.lower()
+    team_a_norm = team_a.lower()
+    team_b_norm = team_b.lower()
+    
+    # Exclude Moroccan League specifically (matches in الدوري المغربي or كأس العرش)
+    # But allow Morocco national team matches in World Cup or AFCON
+    if "المغربي" in tour_normalized or "كأس العرش" in tour_normalized or "المغرب الفاسي" in team_a_norm or "المغرب الفاسي" in team_b_norm:
+        return False
+        
+    # Whitelist keywords for leagues / tournaments
+    whitelist_tournaments = [
+        "كأس العالم", "الدوري المصري", "كأس مصر", "السوبر المصري", 
+        "كأس العالم للأندية", "دوري أبطال", "الدوري الإنجليزي", 
+        "كأس الاتحاد الإنجليزي", "كأس العرب", "كأس الأمم", 
+        "الدوري السعودي", "كأس خادم الحرمين الشريفين", "كأس السوبر"
+    ]
+    
+    # Whitelist keywords for key teams
+    whitelist_teams = [
+        "برشلونة", "ريال مدريد", "أتلتيكو مدريد", "أتليتكو مدريد", 
+        "انتر ميامي", "إنتر ميامي", "الهلال", "النصر", "الاتحاد", 
+        "الأهلي", "الزمالك", "بيراميدز", "ليفربول", "مانشستر", 
+        "أرسنال", "تشيلسي", "بايرن", "باريس", "يوفنتوس"
+    ]
+    
+    # Check tournament whitelist
+    for kw in whitelist_tournaments:
+        if kw in tour_normalized:
+            return True
+            
+    # Check team whitelist
+    for kw in whitelist_teams:
+        if kw in team_a_norm or kw in team_b_norm:
+            return True
+            
+    return False
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -130,6 +175,10 @@ def scrape_yallakora(date_str=None):
                     if img:
                         logo_b = img.get('src') or img.get('data-src') or ""
                 
+                # Filter out uninteresting matches and specifically Moroccan League matches
+                if not should_include_match(tour_name, team_a_name, team_b_name):
+                    continue
+                
                 # Result / Time
                 score_a = "-"
                 score_b = "-"
@@ -178,18 +227,18 @@ def scrape_yallakora(date_str=None):
                 match_list.append(match_data)
         
         save_matches_to_db(match_list)
-        print(f"Scraped and saved {len(match_list)} matches.")
+        print(f"Scraped and saved {len(match_list)} matches (filtered).")
         return match_list
     except Exception as e:
         print(f"Error scraping schedule: {e}")
         return []
 
-def search_stream_embed(team_a, team_b):
+def search_stream_embed(team_a, team_b, channel=""):
     # Call the Vercel search proxy to bypass Hugging Face Space firewall blocks
     import urllib.parse
-    url = f"https://yalla-shoot-today.vercel.app/api/search_streams?teamA={urllib.parse.quote(team_a)}&teamB={urllib.parse.quote(team_b)}"
+    url = f"https://yalla-shoot-today.vercel.app/api/search_streams?teamA={urllib.parse.quote(team_a)}&teamB={urllib.parse.quote(team_b)}&channel={urllib.parse.quote(channel)}"
     try:
-        print(f"Calling Vercel stream search proxy for {team_a} VS {team_b}...")
+        print(f"Calling Vercel stream search proxy for {team_a} VS {team_b} (channel: {channel})...")
         response = requests.get(url, timeout=15)
         if response.status_code == 200:
             data = response.json()
@@ -214,7 +263,7 @@ def update_live_streams():
     
     # We want to find matches that are currently live ("جارية الآن")
     # or starting soon (e.g. status "لم تبدأ")
-    cursor.execute("SELECT id, teamA, teamB, stream_url FROM matches WHERE status = 'جارية الآن' OR status = 'لم تبدأ'")
+    cursor.execute("SELECT id, teamA, teamB, stream_url, channel FROM matches WHERE status = 'جارية الآن' OR status = 'لم تبدأ'")
     active_matches = cursor.fetchall()
     
     if not active_matches:
@@ -224,10 +273,9 @@ def update_live_streams():
         
     print(f"Updating stream links for {len(active_matches)} active/upcoming matches...")
     
-    for match_id, team_a, team_b, current_url in active_matches:
+    for match_id, team_a, team_b, current_url, channel in active_matches:
         # Always search and update stream links for live/upcoming matches
-        # to ensure links are updated constantly and multiple servers are collected.
-        stype, surl = search_stream_embed(team_a, team_b)
+        stype, surl = search_stream_embed(team_a, team_b, channel)
         if surl:
             print(f"Found live stream(s) for {team_a} VS {team_b}: {surl}")
             cursor.execute("""
