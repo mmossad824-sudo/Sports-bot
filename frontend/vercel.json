@@ -1,4 +1,16 @@
 {
+  "builds": [
+    { "src": "api/*.py", "use": "@vercel/python" },
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "style.css", "use": "@vercel/static" },
+    { "src": "app.js", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/cron", "dest": "api/cron.py" },
+    { "src": "/api/matches", "dest": "api/matches.py" },
+    { "src": "/api/match_detail", "dest": "api/match_detail.py" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ],
   "crons": [
     {
       "path": "/api/cron",
