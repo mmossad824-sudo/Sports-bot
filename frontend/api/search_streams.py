@@ -66,7 +66,8 @@ def search_stream_embed(team_a, team_b):
             m3u8_links = re.findall(r'(https?://[^\s"\',]+\.m3u8[^\s"\',]*)', html)
             if m3u8_links:
                 for hls_url in m3u8_links:
-                    # Clean trailing backslashes, quotes, or formatting chars
+                    # Replace escaped unicode characters and clean trailing backslashes/quotes
+                    hls_url = hls_url.replace(r'\u0026', '&').replace('\\u0026', '&')
                     hls_url = re.sub(r'[\s"\'\\,]+$', '', hls_url)
                     # Filter out logos/images/static assets
                     if not any(x in hls_url for x in ['logo', 'icon', 'image', 'banner', 'png', 'jpg']):
@@ -92,7 +93,8 @@ def search_stream_embed(team_a, team_b):
             # Check JS player configs
             js_sources = re.findall(r'source\s*:\s*["\'](https?://.*?\.m3u8.*?)["\']', html)
             if js_sources:
-                js_url = re.sub(r'[\s"\'\\,]+$', '', js_sources[0])
+                js_url = js_sources[0].replace(r'\u0026', '&').replace('\\u0026', '&')
+                js_url = re.sub(r'[\s"\'\\,]+$', '', js_url)
                 return "hls", js_url
                 
         except Exception as e:
