@@ -31,8 +31,15 @@ def job_morning_scrape():
         print(f"Error broadcasting schedule: {e}")
 
 def job_stream_update():
-    print(f"[{datetime.now().isoformat()}] Starting scheduled stream link update...")
-    update_live_streams()
+    print(f"[{datetime.now().isoformat()}] Starting scheduled scraping and stream link update...")
+    try:
+        scrape_yallakora()
+    except Exception as e:
+        print(f"Error scraping Yallakora during stream update: {e}")
+    try:
+        update_live_streams()
+    except Exception as e:
+        print(f"Error updating stream links: {e}")
 
 @app.on_event("startup")
 def startup_event():
@@ -113,6 +120,39 @@ def trigger_scrape(background_tasks: BackgroundTasks):
 def trigger_stream_update(background_tasks: BackgroundTasks):
     background_tasks.add_task(job_stream_update)
     return {"message": "Stream updating task started in the background."}
+
+@app.post("/api/matches/{match_id}/update")
+def update_match(match_id: str, data: dict):
+    if not os.path.exists(DB_PATH):
+        raise HTTPException(status_code=404, detail="Database not found")
+        
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    updates = []
+    params = []
+    
+    # Accept fields to update dynamically
+    fields = ["status", "scoreA", "scoreB", "stream_url", "stream_type", "channel", "round"]
+    for field in fields:
+        if field in data:
+            updates.append(f"{field} = ?")
+            params.append(data[field])
+            
+    if not updates:
+        conn.close()
+        return {"message": "No fields to update"}
+        
+    updates.append("updated_at = ?")
+    params.append(datetime.now().isoformat())
+    
+    params.append(match_id)
+    query = f"UPDATE matches SET {', '.join(updates)} WHERE id = ?"
+    
+    cursor.execute(query, params)
+    conn.commit()
+    conn.close()
+    return {"message": f"Match {match_id} updated successfully"}
 
 if __name__ == "__main__":
     import uvicorn
