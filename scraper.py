@@ -5,6 +5,7 @@ import re
 import sqlite3
 from datetime import datetime
 import os
+import json
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "matches.db")
 
@@ -220,19 +221,18 @@ def update_live_streams():
     print(f"Updating stream links for {len(active_matches)} active/upcoming matches...")
     
     for match_id, team_a, team_b, current_url in active_matches:
-        # If we already have a stream link, check if we need to refresh it (or keep it)
-        # For simplicity, we search for a link if none exists
-        if not current_url:
-            stype, surl = search_stream_embed(team_a, team_b)
-            if surl:
-                print(f"Found live stream for {team_a} VS {team_b}: {surl}")
-                cursor.execute("""
-                    UPDATE matches 
-                    SET stream_type = ?, stream_url = ?, updated_at = ?
-                    WHERE id = ?
-                """, (stype, surl, datetime.now().isoformat(), match_id))
-            else:
-                print(f"Could not find stream for {team_a} VS {team_b}")
+        # Always search and update stream links for live/upcoming matches
+        # to ensure links are updated constantly and multiple servers are collected.
+        stype, surl = search_stream_embed(team_a, team_b)
+        if surl:
+            print(f"Found live stream(s) for {team_a} VS {team_b}: {surl}")
+            cursor.execute("""
+                UPDATE matches 
+                SET stream_type = ?, stream_url = ?, updated_at = ?
+                WHERE id = ?
+            """, (stype, surl, datetime.now().isoformat(), match_id))
+        else:
+            print(f"Could not find stream for {team_a} VS {team_b}")
                 
     conn.commit()
     conn.close()
