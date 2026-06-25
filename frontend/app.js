@@ -242,11 +242,12 @@ async function openMatchStream(matchId) {
         
         // Handle finished matches (Highlights)
         if (match.status === 'انتهت') {
-            if (sources.length > 0) {
+            const highlights = sources.filter(s => s.url.includes('youtube.com') || s.url.includes('youtu.be') || s.url.endsWith('.mp4'));
+            if (highlights.length > 0) {
                 placeholder.classList.add('hidden');
                 document.getElementById('player-title').innerText = `ملخص المباراة: ${match.teamA} VS ${match.teamB}`;
-                currentSources = sources;
-                setupMultiSources(sources);
+                currentSources = highlights;
+                setupMultiSources(highlights);
             } else {
                 placeholder.classList.remove('hidden');
                 placeholder.querySelector('h3').innerText = 'انتهت المباراة';
