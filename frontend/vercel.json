@@ -9,6 +9,7 @@
     { "src": "/api/cron", "dest": "api/cron.py" },
     { "src": "/api/matches", "dest": "api/matches.py" },
     { "src": "/api/match_detail", "dest": "api/match_detail.py" },
+    { "src": "/api/search_streams", "dest": "api/search_streams.py" },
     { "src": "/(.*)", "dest": "/$1" }
   ],
   "crons": [

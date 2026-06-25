@@ -93,7 +93,7 @@ def scrape_and_format():
                 classes = row.get('class', [])
                 if 'finish' in classes:
                     status_desc = "انتهت"
-                elif 'live' in classes:
+                elif 'live' in classes or 'now' in classes:
                     status_desc = "جارية الآن"
                 elif 'future' in classes:
                     status_desc = "لم تبدأ"
