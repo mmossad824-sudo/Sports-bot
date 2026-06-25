@@ -7,13 +7,14 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "")
 DB_PATH = os.path.join(os.path.dirname(__file__), "matches.db")
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://your-vercel-domain.vercel.app")
+TELEGRAM_API_URL = os.getenv("TELEGRAM_API_URL", "https://api.telegram.org").rstrip('/')
 
 def send_telegram_message(text, parse_mode="HTML", reply_markup=None):
     if not BOT_TOKEN or not CHANNEL_ID:
         print("Telegram BOT_TOKEN or CHANNEL_ID not configured.")
         return False
         
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    url = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
         "text": text,
