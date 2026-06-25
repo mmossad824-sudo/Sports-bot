@@ -20,10 +20,21 @@ app.add_middleware(
 
 scheduler = BackgroundScheduler()
 
+def scrape_three_days():
+    from datetime import timedelta
+    cairo_now = datetime.utcnow() + timedelta(hours=3)
+    for offset in [-1, 0, 1]:
+        d = cairo_now + timedelta(days=offset)
+        date_str = f"{d.month}/{d.day}/{d.year}"
+        try:
+            scrape_yallakora(date_str)
+        except Exception as e:
+            print(f"Error scraping date {date_str}: {e}")
+
 # Background Jobs wrapper
 def job_morning_scrape():
     print(f"[{datetime.now().isoformat()}] Starting scheduled morning scrape...")
-    scrape_yallakora()
+    scrape_three_days()
     # Broadcast daily matches list to Telegram
     try:
         broadcast_schedule()
@@ -33,7 +44,12 @@ def job_morning_scrape():
 def job_stream_update():
     print(f"[{datetime.now().isoformat()}] Starting scheduled scraping and stream link update...")
     try:
-        scrape_yallakora()
+        from datetime import timedelta
+        cairo_now = datetime.utcnow() + timedelta(hours=3)
+        for offset in [0, 1]:
+            d = cairo_now + timedelta(days=offset)
+            date_str = f"{d.month}/{d.day}/{d.year}"
+            scrape_yallakora(date_str)
     except Exception as e:
         print(f"Error scraping Yallakora during stream update: {e}")
     try:
@@ -56,32 +72,9 @@ def startup_event():
     except Exception as e:
         print(f"Error cleaning database: {e}")
         
-    # Inject mock test match for the user to test live streaming
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        mock_id = f"الهلال_النصر_{today_str}"
-        cursor.execute("""
-            INSERT OR REPLACE INTO matches 
-            (id, tournament, teamA, teamB, scoreA, scoreB, time, status, channel, round, logoA, logoB, link, stream_type, stream_url, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            mock_id, "مباراة تجريبية (بث مباشر)", "الهلال", "النصر", "0", "0",
-            "23:00", "جارية الآن", "beIN SPORTS MAX HD1", "ودية",
-            "https://mediayk.gemini.media/img/yallakora/iosteams/120/2018/7/24/AlHilal2018_7_24_17_51.jpg",
-            "https://mediayk.gemini.media/img/yallakora/iosteams/120/2018/7/24/AlNasr2018_7_24_17_51.jpg",
-            "https://www.yallakora.com", "multi", None, datetime.now().isoformat()
-        ))
-        conn.commit()
-        conn.close()
-        print("Mock test match injected successfully.")
-    except Exception as e:
-        print(f"Error injecting mock match: {e}")
-        
     # Run initial scrape and stream update on startup so database is never empty
     print("Running startup scraping tasks...")
-    scrape_yallakora()
+    scrape_three_days()
     update_live_streams()
     
     # Broadcast to Telegram on startup for testing/initialization

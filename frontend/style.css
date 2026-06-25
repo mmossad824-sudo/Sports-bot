@@ -172,6 +172,45 @@ body {
     font-weight: 600;
 }
 
+/* Date Tabs */
+.date-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 30px;
+    background: rgba(22, 30, 49, 0.4);
+    padding: 6px;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.date-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-ar);
+    transition: var(--transition);
+}
+
+.date-tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.date-tab-btn.active {
+    background: var(--accent);
+    color: #ffffff;
+    box-shadow: 0 4px 12px var(--accent-glow);
+}
+
 /* Spinner */
 .loading-container {
     display: flex;

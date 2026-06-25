@@ -12,12 +12,92 @@ let pollIntervalId = null;
 let retryCount = 0;
 const MAX_RETRIES = 3;
 
+let activeTab = 'today';
+let allMatches = [];
+
+// Helper to get date string in Cairo Time (UTC+3)
+function getCairoDateString(offsetDays = 0) {
+    const d = new Date();
+    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    const cairoTime = new Date(utc + (3600000 * 3));
+    
+    if (offsetDays !== 0) {
+        cairoTime.setDate(cairoTime.getDate() + offsetDays);
+    }
+    
+    const year = cairoTime.getFullYear();
+    const month = String(cairoTime.getMonth() + 1).padStart(2, '0');
+    const day = String(cairoTime.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Filter matches array based on the active tab
+function filterMatchesByTab(matches, tab) {
+    const targetDate = getCairoDateString(tab === 'yesterday' ? -1 : (tab === 'tomorrow' ? 1 : 0));
+    return matches.filter(m => {
+        if (!m.match_date) {
+            // Default to today if date is missing
+            return tab === 'today';
+        }
+        return m.match_date === targetDate;
+    });
+}
+
+// Update the display badge for current selected date
+function updateDateBadge() {
+    const badge = document.getElementById('current-date');
+    if (!badge) return;
+    
+    const d = new Date();
+    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    const cairoTime = new Date(utc + (3600000 * 3));
+    
+    let offset = 0;
+    if (activeTab === 'yesterday') offset = -1;
+    if (activeTab === 'tomorrow') offset = 1;
+    
+    cairoTime.setDate(cairoTime.getDate() + offset);
+    
+    badge.innerText = cairoTime.toLocaleDateString('ar-EG', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+}
+
+// Render filtered matches
+function displayMatchesForActiveTab() {
+    const container = document.getElementById('matches-container');
+    const noMatches = document.getElementById('no-matches');
+    
+    const filtered = filterMatchesByTab(allMatches, activeTab);
+    
+    if (filtered.length === 0) {
+        noMatches.classList.remove('hidden');
+        container.innerHTML = '';
+        return;
+    }
+    
+    noMatches.classList.add('hidden');
+    renderMatches(filtered);
+}
+
 // Initialize Page
 document.addEventListener('DOMContentLoaded', () => {
-    // Set current date
-    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', calendar: 'islamic' };
-    const today = new Date();
-    document.getElementById('current-date').innerText = today.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    // Set current date badge
+    updateDateBadge();
+    
+    // Setup Tab click handlers
+    document.querySelectorAll('.date-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.date-tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeTab = btn.getAttribute('data-tab');
+            updateDateBadge();
+            displayMatchesForActiveTab();
+        });
+    });
     
     // Load Matches
     fetchMatches();
@@ -43,16 +123,10 @@ async function fetchMatches() {
         if (!response.ok) throw new Error('Failed to fetch matches');
         
         const matches = await response.json();
+        allMatches = matches; // Store globally
         spinner.classList.add('hidden');
         
-        if (matches.length === 0) {
-            noMatches.classList.remove('hidden');
-            container.innerHTML = '';
-            return;
-        }
-        
-        noMatches.classList.add('hidden');
-        renderMatches(matches);
+        displayMatchesForActiveTab();
     } catch (error) {
         console.error('Error loading matches:', error);
         spinner.classList.add('hidden');

@@ -42,8 +42,15 @@
         <!-- Dynamic Matches Container -->
         <section class="matches-section">
             <div class="section-header">
-                <h2><i class="fa-regular fa-calendar-days icon-color"></i> مباريات اليوم</h2>
+                <h2><i class="fa-regular fa-calendar-days icon-color"></i> جدول المباريات</h2>
                 <span id="current-date" class="date-badge"></span>
+            </div>
+            
+            <!-- Date Tabs Selector -->
+            <div class="date-tabs">
+                <button class="date-tab-btn" id="tab-yesterday" data-tab="yesterday">الأمس</button>
+                <button class="date-tab-btn active" id="tab-today" data-tab="today">اليوم</button>
+                <button class="date-tab-btn" id="tab-tomorrow" data-tab="tomorrow">غداً</button>
             </div>
             
             <div id="loading-spinner" class="loading-container">

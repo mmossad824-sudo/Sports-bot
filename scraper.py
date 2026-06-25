@@ -74,21 +74,25 @@ def init_db():
             link TEXT,
             stream_type TEXT,
             stream_url TEXT,
+            match_date TEXT,
             updated_at TEXT
         )
     """)
+    try:
+        cursor.execute("ALTER TABLE matches ADD COLUMN match_date TEXT")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
-def save_matches_to_db(matches):
+def save_matches_to_db(matches, match_date):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     now_str = datetime.now().isoformat()
     
     for m in matches:
-        # Create a unique ID using team names and today's date
-        today_date = datetime.now().strftime("%Y-%m-%d")
-        match_id = f"{m['teamA']}_{m['teamB']}_{today_date}"
+        # Create a unique ID using team names and match date
+        match_id = f"{m['teamA']}_{m['teamB']}_{match_date}"
         
         # Check if match already exists to preserve stream links
         cursor.execute("SELECT stream_type, stream_url FROM matches WHERE id = ?", (match_id,))
@@ -102,22 +106,31 @@ def save_matches_to_db(matches):
             
         cursor.execute("""
             INSERT OR REPLACE INTO matches 
-            (id, tournament, teamA, teamB, scoreA, scoreB, time, status, channel, round, logoA, logoB, link, stream_type, stream_url, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, tournament, teamA, teamB, scoreA, scoreB, time, status, channel, round, logoA, logoB, link, stream_type, stream_url, match_date, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             match_id, m['tournament'], m['teamA'], m['teamB'], m['scoreA'], m['scoreB'],
             m['time'], m['status'], m['channel'], m['round'], m['logoA'], m['logoB'],
-            m['link'], stream_type, stream_url, now_str
+            m['link'], stream_type, stream_url, match_date, now_str
         ))
         
     conn.commit()
     conn.close()
 
+def format_date_to_db(date_str):
+    parts = date_str.split('/')
+    if len(parts) == 3:
+        month, day, year = parts
+        return f"{year}-{int(month):02d}-{int(day):02d}"
+    return date_str
+
 def scrape_yallakora(date_str=None):
+    from datetime import timedelta
     if not date_str:
-        now = datetime.now()
-        date_str = f"{now.month}/{now.day}/{now.year}"
-    
+        cairo_now = datetime.utcnow() + timedelta(hours=3)
+        date_str = f"{cairo_now.month}/{cairo_now.day}/{cairo_now.year}"
+        
+    db_date = format_date_to_db(date_str)
     url = f"https://www.yallakora.com/match-center/?date={date_str}"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
@@ -226,7 +239,7 @@ def scrape_yallakora(date_str=None):
                 }
                 match_list.append(match_data)
         
-        save_matches_to_db(match_list)
+        save_matches_to_db(match_list, db_date)
         print(f"Scraped and saved {len(match_list)} matches (filtered).")
         return match_list
     except Exception as e:
@@ -262,8 +275,15 @@ def update_live_streams():
     cursor = conn.cursor()
     
     # We want to find matches that are currently live ("جارية الآن")
-    # or starting soon (e.g. status "لم تبدأ")
-    cursor.execute("SELECT id, teamA, teamB, stream_url, channel FROM matches WHERE status = 'جارية الآن' OR status = 'لم تبدأ'")
+    # or starting soon (e.g. status "لم تبدأ") on TODAY's date (Cairo time)
+    from datetime import timedelta
+    cairo_today = (datetime.utcnow() + timedelta(hours=3)).strftime("%Y-%m-%d")
+    cursor.execute("""
+        SELECT id, teamA, teamB, stream_url, channel 
+        FROM matches 
+        WHERE (status = 'جارية الآن' OR status = 'لم تبدأ') 
+          AND (match_date = ? OR match_date IS NULL)
+    """, (cairo_today,))
     active_matches = cursor.fetchall()
     
     if not active_matches:
