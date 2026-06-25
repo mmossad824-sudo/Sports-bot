@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>يلا لايف - جدول المباريات والبث المباشر</title>
+    <!-- Google Fonts: Outfit & Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Clappr Video Player CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/clappr@latest/dist/clappr.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background Elements for Premium Grid Effect -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <header class="header">
+        <div class="container header-container">
+            <div class="logo">
+                <i class="fa-solid fa-circle-play logo-icon"></i>
+                <span class="logo-text">Yalla<span class="highlight">Live</span></span>
+            </div>
+            <div class="header-status">
+                <span class="status-indicator"></span>
+                <span>تحديث تلقائي</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        <!-- Hero Section -->
+        <section class="hero">
+            <h1>جدول مباريات اليوم والبث المباشر</h1>
+            <p>شاهد أهم المباريات والبطولات العالمية والعربية مجاناً بجودة عالية وبدون إعلانات مزعجة.</p>
+        </section>
+
+        <!-- Dynamic Matches Container -->
+        <section class="matches-section">
+            <div class="section-header">
+                <h2><i class="fa-regular fa-calendar-days icon-color"></i> مباريات اليوم</h2>
+                <span id="current-date" class="date-badge"></span>
+            </div>
+            
+            <div id="loading-spinner" class="loading-container">
+                <div class="spinner"></div>
+                <p>جاري تحميل المباريات المباشرة...</p>
+            </div>
+            
+            <div id="no-matches" class="no-matches hidden">
+                <i class="fa-regular fa-circle-xmark no-matches-icon"></i>
+                <h3>لا توجد مباريات مجدولة اليوم</h3>
+                <p>يرجى العودة لاحقاً أو التحقق من جدول الغد.</p>
+            </div>
+
+            <div id="matches-container" class="matches-grid">
+                <!-- Tournaments and Matches will be loaded here dynamically -->
+            </div>
+        </section>
+
+        <!-- Video Player Modal / Section (Appears when match is clicked) -->
+        <section id="player-section" class="player-section hidden">
+            <div class="player-wrapper card">
+                <div class="player-header">
+                    <h3 id="player-title">بث مباشر للمباراة</h3>
+                    <button id="close-player" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <div class="video-container">
+                    <div id="video-player"></div>
+                    <div id="iframe-player-container" class="hidden">
+                        <iframe id="iframe-player" src="" allowfullscreen scrolling="no" allow="autoplay; encrypted-media"></iframe>
+                    </div>
+                    <div id="no-stream-placeholder" class="no-stream-placeholder hidden">
+                        <div class="placeholder-content">
+                            <i class="fa-solid fa-circle-exclamation error-icon"></i>
+                            <h3>البث المباشر غير متوفر حالياً</h3>
+                            <p>يبدأ البث قبل انطلاق المباراة بـ 15 دقيقة. يرجى التحديث لاحقاً.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="player-footer">
+                    <div class="match-info-bar">
+                        <div class="match-teams-info">
+                            <span id="footer-team-a">فريق أ</span>
+                            <span class="vs-badge">VS</span>
+                            <span id="footer-team-b">فريق ب</span>
+                        </div>
+                        <div id="footer-match-details" class="footer-match-details">
+                            <span id="footer-channel"><i class="fa-solid fa-tv"></i> - </span>
+                            <span id="footer-status"><i class="fa-solid fa-circle-dot"></i> - </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Safe Auto-Refresh Ad Banner Under Video Player -->
+                <div class="ad-banner-container">
+                    <span class="ad-label">إعلان ممول (يتحدث تلقائياً لتفادي الانزعاج)</span>
+                    <div id="banner-ad-container" class="banner-ad-slot">
+                        <!-- Simulated Banner Placeholder (For user to see dynamic changes) -->
+                        <div class="simulated-ad">
+                            <div class="ad-icon"><i class="fa-solid fa-bullhorn"></i></div>
+                            <div class="ad-text">
+                                <strong>توقع نتيجة المباراة مجاناً واربح مكافأة ترحيبية 130$ مع 1XBET!</strong>
+                                <p>استخدم الرمز الترويجي: <code>YALLALIVE</code> للحصول على البونص فوراً.</p>
+                            </div>
+                            <a href="https://1xbet.com" target="_blank" class="ad-btn">سجل الآن <i class="fa-solid fa-arrow-left"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-content">
+            <p>© 2026 YallaLive. جميع الحقوق محفوظة. الموقع دليل رياضي للبث المباشر ولا يستضيف ملفات الفيديو على خوادمه الخاصة.</p>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
