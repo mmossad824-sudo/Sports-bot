@@ -215,74 +215,166 @@ async function openMatchStream(matchId) {
         document.getElementById('footer-channel').innerHTML = `<i class="fa-solid fa-tv"></i> القناة الناقلة: ${match.channel || 'غير معروفة'}`;
         document.getElementById('footer-status').innerHTML = `<i class="fa-solid fa-circle-dot"></i> الحالة: ${match.status}`;
         
-        // If match finished, play highlights if available, otherwise show placeholder
+        // Setup sources array
+        let sources = [];
+        if (match.stream_type === 'multi') {
+            try {
+                sources = JSON.parse(match.stream_url);
+            } catch (e) {
+                console.error("Error parsing multi-source JSON:", e);
+            }
+        } else if (match.stream_url) {
+            // Fallback for single stream source
+            sources = [{
+                name: "البث الرئيسي",
+                type: match.stream_type || "hls",
+                url: match.stream_url
+            }];
+        }
+        
+        // Handle finished matches (Highlights)
         if (match.status === 'انتهت') {
-            if (match.stream_url) {
+            if (sources.length > 0) {
                 placeholder.classList.add('hidden');
                 document.getElementById('player-title').innerText = `ملخص المباراة: ${match.teamA} VS ${match.teamB}`;
-                
-                // Play Highlight stream based on Type
-                if (match.stream_type === 'hls') {
-                    videoPlayerDiv.classList.remove('hidden');
-                    iframeContainer.classList.add('hidden');
-                    clapprPlayer = new Clappr.Player({
-                        source: match.stream_url,
-                        parentId: "#video-player",
-                        width: '100%',
-                        height: '100%',
-                        autoPlay: true,
-                        mute: false,
-                        mimeType: "application/x-mpegURL"
-                    });
-                } else if (match.stream_type === 'iframe') {
-                    videoPlayerDiv.classList.add('hidden');
-                    iframeContainer.classList.remove('hidden');
-                    document.getElementById('iframe-player').src = match.stream_url;
-                }
+                setupMultiSources(sources);
             } else {
                 placeholder.classList.remove('hidden');
                 placeholder.querySelector('h3').innerText = 'انتهت المباراة';
                 placeholder.querySelector('p').innerText = 'الملخصات واللقطات ستكون متوفرة على قناتنا في تليجرام.';
+                document.getElementById('sources-tabs').classList.add('hidden');
             }
             return;
         }
         
-        // Check if stream link exists
-        if (!match.stream_url) {
+        // Handle upcoming/live matches
+        if (sources.length === 0) {
             placeholder.classList.remove('hidden');
             placeholder.querySelector('h3').innerText = 'البث المباشر غير متوفر حالياً';
             placeholder.querySelector('p').innerText = 'يبدأ البث قبل انطلاق المباراة بـ 15 دقيقة. يرجى الانتظار والتحديث.';
+            document.getElementById('sources-tabs').classList.add('hidden');
             return;
         }
         
         placeholder.classList.add('hidden');
-        
-        // Play Stream based on Type
-        if (match.stream_type === 'hls') {
-            videoPlayerDiv.classList.remove('hidden');
-            iframeContainer.classList.add('hidden');
-            
-            // Initialize Clappr Player for HLS (.m3u8)
-            clapprPlayer = new Clappr.Player({
-                source: match.stream_url,
-                parentId: "#video-player",
-                width: '100%',
-                height: '100%',
-                autoPlay: true,
-                mute: false,
-                mimeType: "application/x-mpegURL"
-            });
-        } else if (match.stream_type === 'iframe') {
-            videoPlayerDiv.classList.add('hidden');
-            iframeContainer.classList.remove('hidden');
-            document.getElementById('iframe-player').src = match.stream_url;
-        }
+        setupMultiSources(sources);
         
     } catch (error) {
         console.error('Error opening stream:', error);
         placeholder.classList.remove('hidden');
         placeholder.querySelector('h3').innerText = 'خطأ في تشغيل البث';
+        document.getElementById('sources-tabs').classList.add('hidden');
     }
+}
+
+// Setup multiple server selector tabs
+function setupMultiSources(sources) {
+    const tabsContainer = document.getElementById('sources-tabs');
+    tabsContainer.innerHTML = '';
+    tabsContainer.classList.remove('hidden');
+    
+    sources.forEach((source, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'source-btn';
+        if (index === 0) btn.classList.add('active');
+        btn.innerText = source.name;
+        
+        btn.addEventListener('click', () => {
+            // Manage active styles
+            document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Play this specific source
+            playSource(source);
+        });
+        
+        tabsContainer.appendChild(btn);
+    });
+    
+    // Play the first source by default
+    playSource(sources[0]);
+}
+
+// Play specific source (HLS or iframe)
+function playSource(source) {
+    const videoPlayerDiv = document.getElementById('video-player');
+    const iframeContainer = document.getElementById('iframe-player-container');
+    const iframe = document.getElementById('iframe-player');
+    const placeholder = document.getElementById('no-stream-placeholder');
+    
+    // Hide toast overlays
+    hidePlayerToast();
+    placeholder.classList.add('hidden');
+    
+    // Clean previous players
+    if (clapprPlayer) {
+        clapprPlayer.destroy();
+        clapprPlayer = null;
+    }
+    videoPlayerDiv.innerHTML = '';
+    iframe.src = '';
+    
+    console.log(`[Player Manager] Playing source: ${source.name} (${source.type})`);
+    
+    if (source.type === 'hls') {
+        videoPlayerDiv.classList.remove('hidden');
+        iframeContainer.classList.add('hidden');
+        
+        clapprPlayer = new Clappr.Player({
+            source: source.url,
+            parentId: "#video-player",
+            width: '100%',
+            height: '100%',
+            autoPlay: true,
+            mute: false,
+            mimeType: "application/x-mpegURL",
+            events: {
+                onError: function(err) {
+                    console.warn(`Clappr error on source: ${source.name}`, err);
+                    autoSwitchToNextSource();
+                }
+            }
+        });
+    } else if (source.type === 'iframe') {
+        videoPlayerDiv.classList.add('hidden');
+        iframeContainer.classList.remove('hidden');
+        iframe.src = source.url;
+    }
+}
+
+// Auto-switch to the next available server tab if current fails
+function autoSwitchToNextSource() {
+    const activeBtn = document.querySelector('.source-btn.active');
+    if (!activeBtn) return;
+    
+    const nextBtn = activeBtn.nextElementSibling;
+    if (nextBtn && nextBtn.classList.contains('source-btn')) {
+        showPlayerToast("فشل السيرفر الحالي، جاري الانتقال للسيرفر البديل تلقائياً...");
+        setTimeout(() => {
+            if (document.getElementById('player-section').classList.contains('hidden')) return; // closed
+            nextBtn.click();
+        }, 2000);
+    } else {
+        // No more sources available
+        const placeholder = document.getElementById('no-stream-placeholder');
+        placeholder.classList.remove('hidden');
+        placeholder.querySelector('h3').innerText = 'انقطع البث المباشر';
+        placeholder.querySelector('p').innerText = 'جميع سيرفرات البث خارج الخدمة حالياً، يرجى الانتظار للتحديث.';
+    }
+}
+
+// Show temporary toast message inside player
+function showPlayerToast(message) {
+    const toast = document.getElementById('player-toast');
+    const toastText = document.getElementById('player-toast-text');
+    toastText.innerText = message;
+    toast.classList.remove('hidden');
+}
+
+// Hide player toast message
+function hidePlayerToast() {
+    const toast = document.getElementById('player-toast');
+    toast.classList.add('hidden');
 }
 
 // Close and clean up video player
@@ -290,9 +382,12 @@ function closePlayer() {
     const playerSection = document.getElementById('player-section');
     const iframe = document.getElementById('iframe-player');
     const videoPlayerDiv = document.getElementById('video-player');
+    const tabsContainer = document.getElementById('sources-tabs');
     
     // Hide section
     playerSection.classList.add('hidden');
+    tabsContainer.classList.add('hidden');
+    hidePlayerToast();
     
     // Stop iframe stream
     iframe.src = '';

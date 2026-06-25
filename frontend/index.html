@@ -69,8 +69,13 @@
                     <h3 id="player-title">بث مباشر للمباراة</h3>
                     <button id="close-player" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
                 </div>
+                <!-- Multi-source selector tabs -->
+                <div id="sources-tabs" class="sources-tabs hidden"></div>
                 
                 <div class="video-container">
+                    <div id="player-toast" class="player-toast hidden">
+                        <span id="player-toast-text">جاري الانتقال للسيرفر البديل...</span>
+                    </div>
                     <div id="video-player"></div>
                     <div id="iframe-player-container" class="hidden">
                         <iframe id="iframe-player" src="" allowfullscreen scrolling="no" allow="autoplay; encrypted-media"></iframe>
