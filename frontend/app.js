@@ -5,6 +5,12 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
     : window.location.origin; 
 
 let clapprPlayer = null;
+let activeMatchId = null;
+let currentSources = [];
+let activeSourceIndex = -1;
+let pollIntervalId = null;
+let retryCount = 0;
+const MAX_RETRIES = 3;
 
 // Initialize Page
 document.addEventListener('DOMContentLoaded', () => {
@@ -191,12 +197,14 @@ async function openMatchStream(matchId) {
     const videoPlayerDiv = document.getElementById('video-player');
     const placeholder = document.getElementById('no-stream-placeholder');
     
-    // Clear previous players
+    // Clear previous players and stop polling
     closePlayer();
     
     // Scroll to player
     playerSection.classList.remove('hidden');
     playerSection.scrollIntoView({ behavior: 'smooth' });
+    
+    activeMatchId = matchId;
     
     try {
         // If running locally, fetch FastAPI path directly. If running on Vercel, hit Vercel query proxy
@@ -237,6 +245,7 @@ async function openMatchStream(matchId) {
             if (sources.length > 0) {
                 placeholder.classList.add('hidden');
                 document.getElementById('player-title').innerText = `ملخص المباراة: ${match.teamA} VS ${match.teamB}`;
+                currentSources = sources;
                 setupMultiSources(sources);
             } else {
                 placeholder.classList.remove('hidden');
@@ -253,11 +262,18 @@ async function openMatchStream(matchId) {
             placeholder.querySelector('h3').innerText = 'البث المباشر غير متوفر حالياً';
             placeholder.querySelector('p').innerText = 'يبدأ البث قبل انطلاق المباراة بـ 15 دقيقة. يرجى الانتظار والتحديث.';
             document.getElementById('sources-tabs').classList.add('hidden');
+            
+            // Start polling even if no streams are found yet (upcoming match starts soon)
+            startBackgroundPolling();
             return;
         }
         
         placeholder.classList.add('hidden');
+        currentSources = sources;
         setupMultiSources(sources);
+        
+        // Start background polling
+        startBackgroundPolling();
         
     } catch (error) {
         console.error('Error opening stream:', error);
@@ -267,8 +283,103 @@ async function openMatchStream(matchId) {
     }
 }
 
+// Start background polling for active match details
+function startBackgroundPolling() {
+    if (pollIntervalId) clearInterval(pollIntervalId);
+    pollIntervalId = setInterval(pollActiveMatchDetails, 30000);
+}
+
+// Stop background polling
+function stopBackgroundPolling() {
+    if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+        pollIntervalId = null;
+    }
+}
+
+// Fetch active match details and check for stream source updates
+async function pollActiveMatchDetails() {
+    if (!activeMatchId) return;
+    
+    try {
+        const url = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? `${API_BASE_URL}/api/matches/${activeMatchId}`
+            : `${API_BASE_URL}/api/match_detail?id=${encodeURIComponent(activeMatchId)}`;
+            
+        const response = await fetch(url);
+        if (!response.ok) return;
+        
+        const match = await response.json();
+        
+        // Setup new sources array
+        let newSources = [];
+        if (match.stream_type === 'multi') {
+            try {
+                newSources = JSON.parse(match.stream_url);
+            } catch (e) {
+                console.error("Error parsing multi-source JSON:", e);
+            }
+        } else if (match.stream_url) {
+            newSources = [{
+                name: "البث الرئيسي",
+                type: match.stream_type || "hls",
+                url: match.stream_url
+            }];
+        }
+        
+        // Check if sources changed
+        if (!isSameSources(currentSources, newSources)) {
+            console.log("[Polling] Stream sources updated in the background!");
+            
+            const oldActiveSource = activeSourceIndex >= 0 ? currentSources[activeSourceIndex] : null;
+            currentSources = newSources;
+            
+            // Re-setup UI tabs
+            setupMultiSources(currentSources, false); // don't automatically click/play again if playing fine
+            
+            // If the active source index is still valid
+            if (activeSourceIndex >= 0 && activeSourceIndex < currentSources.length) {
+                const newActiveSource = currentSources[activeSourceIndex];
+                
+                // If the URL for the active source has changed, update it
+                if (oldActiveSource && oldActiveSource.url !== newActiveSource.url) {
+                    console.log(`[Polling] Active source URL changed for ${newActiveSource.name}`);
+                    
+                    // If the player is currently showing an error or placeholder, reload immediately
+                    const placeholder = document.getElementById('no-stream-placeholder');
+                    const isError = !placeholder.classList.contains('hidden') || document.getElementById('player-toast-text').innerText.includes('خطأ');
+                    
+                    if (isError) {
+                        showPlayerToast(`تم تحديث رابط ${newActiveSource.name}، جاري إعادة التشغيل...`);
+                        setTimeout(() => {
+                            playSource(newActiveSource, activeSourceIndex);
+                        }, 1000);
+                    } else {
+                        // Show a subtle toast notice that stream links updated
+                        showPlayerToast(`تم تحديث روابط البث في الخلفية.`);
+                        setTimeout(hidePlayerToast, 3000);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error("[Polling] Error polling match details:", e);
+    }
+}
+
+// Compare two lists of stream sources
+function isSameSources(sourcesA, sourcesB) {
+    if (sourcesA.length !== sourcesB.length) return false;
+    for (let i = 0; i < sourcesA.length; i++) {
+        if (sourcesA[i].url !== sourcesB[i].url || sourcesA[i].name !== sourcesB[i].name || sourcesA[i].type !== sourcesB[i].type) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // Setup multiple server selector tabs
-function setupMultiSources(sources) {
+function setupMultiSources(sources, playFirst = true) {
     const tabsContainer = document.getElementById('sources-tabs');
     tabsContainer.innerHTML = '';
     tabsContainer.classList.remove('hidden');
@@ -276,7 +387,9 @@ function setupMultiSources(sources) {
     sources.forEach((source, index) => {
         const btn = document.createElement('button');
         btn.className = 'source-btn';
-        if (index === 0) btn.classList.add('active');
+        if (activeSourceIndex === index || (activeSourceIndex === -1 && index === 0)) {
+            btn.classList.add('active');
+        }
         btn.innerText = source.name;
         
         btn.addEventListener('click', () => {
@@ -285,22 +398,28 @@ function setupMultiSources(sources) {
             btn.classList.add('active');
             
             // Play this specific source
-            playSource(source);
+            playSource(source, index);
         });
         
         tabsContainer.appendChild(btn);
     });
     
-    // Play the first source by default
-    playSource(sources[0]);
+    // Play the first source by default if requested
+    if (playFirst && sources.length > 0) {
+        playSource(sources[0], 0);
+    }
 }
 
 // Play specific source (HLS or iframe)
-function playSource(source) {
+function playSource(source, index) {
     const videoPlayerDiv = document.getElementById('video-player');
     const iframeContainer = document.getElementById('iframe-player-container');
     const iframe = document.getElementById('iframe-player');
     const placeholder = document.getElementById('no-stream-placeholder');
+    
+    // Reset retry count when user explicitly plays/clicks a source or switches
+    retryCount = 0;
+    activeSourceIndex = index;
     
     // Hide toast overlays
     hidePlayerToast();
@@ -314,7 +433,16 @@ function playSource(source) {
     videoPlayerDiv.innerHTML = '';
     iframe.src = '';
     
-    console.log(`[Player Manager] Playing source: ${source.name} (${source.type})`);
+    console.log(`[Player Manager] Playing source [${index}]: ${source.name} (${source.type})`);
+    
+    // Highlight the active button in the UI
+    document.querySelectorAll('.source-btn').forEach((btn, idx) => {
+        if (idx === index) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
     
     if (source.type === 'hls') {
         videoPlayerDiv.classList.remove('hidden');
@@ -331,7 +459,7 @@ function playSource(source) {
             events: {
                 onError: function(err) {
                     console.warn(`Clappr error on source: ${source.name}`, err);
-                    autoSwitchToNextSource();
+                    handlePlayerError(source, index);
                 }
             }
         });
@@ -342,24 +470,98 @@ function playSource(source) {
     }
 }
 
+// Handle Clappr load errors with retry and API refresh check
+async function handlePlayerError(source, index) {
+    if (retryCount < MAX_RETRIES) {
+        retryCount++;
+        showPlayerToast(`حدث خطأ في الاتصال بالسيرفر. جاري إعادة المحاولة (${retryCount}/${MAX_RETRIES})...`);
+        
+        setTimeout(() => {
+            if (activeMatchId && activeSourceIndex === index) {
+                console.log(`[Player Recovery] Retry attempt ${retryCount} for source: ${source.name}`);
+                // Re-initialize player with same source
+                if (clapprPlayer) {
+                    clapprPlayer.destroy();
+                    clapprPlayer = null;
+                }
+                const videoPlayerDiv = document.getElementById('video-player');
+                videoPlayerDiv.innerHTML = '';
+                
+                clapprPlayer = new Clappr.Player({
+                    source: source.url,
+                    parentId: "#video-player",
+                    width: '100%',
+                    height: '100%',
+                    autoPlay: true,
+                    mute: false,
+                    mimeType: "application/x-mpegURL",
+                    events: {
+                        onError: function(err) {
+                            console.warn(`Clappr error on retry: ${source.name}`, err);
+                            handlePlayerError(source, index);
+                        }
+                    }
+                });
+            }
+        }, 3000); // 3 seconds delay before retry
+    } else {
+        // We exceeded MAX_RETRIES. Let's immediately fetch a fresh URL list from the API
+        showPlayerToast("جاري البحث عن روابط بث محدثة ومستقرة...");
+        
+        try {
+            const url = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? `${API_BASE_URL}/api/matches/${activeMatchId}`
+                : `${API_BASE_URL}/api/match_detail?id=${encodeURIComponent(activeMatchId)}`;
+                
+            const response = await fetch(url);
+            if (response.ok) {
+                const match = await response.json();
+                let freshSources = [];
+                if (match.stream_type === 'multi') {
+                    freshSources = JSON.parse(match.stream_url);
+                } else if (match.stream_url) {
+                    freshSources = [{
+                        name: "البث الرئيسي",
+                        type: match.stream_type || "hls",
+                        url: match.stream_url
+                    }];
+                }
+                
+                // If there's a fresh URL for our current active index that is different from our current URL
+                if (freshSources.length > index && freshSources[index].url !== source.url) {
+                    console.log(`[Player Recovery] Found updated URL for ${source.name}. Retrying with fresh URL.`);
+                    currentSources = freshSources;
+                    setupMultiSources(currentSources, false);
+                    retryCount = 0; // reset
+                    playSource(currentSources[index], index);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error("[Player Recovery] Error checking for fresh URLs:", e);
+        }
+        
+        // No updated URL found or fetch failed. Proceed to auto-switch to next server
+        autoSwitchToNextSource();
+    }
+}
+
 // Auto-switch to the next available server tab if current fails
 function autoSwitchToNextSource() {
-    const activeBtn = document.querySelector('.source-btn.active');
-    if (!activeBtn) return;
-    
-    const nextBtn = activeBtn.nextElementSibling;
-    if (nextBtn && nextBtn.classList.contains('source-btn')) {
-        showPlayerToast("فشل السيرفر الحالي، جاري الانتقال للسيرفر البديل تلقائياً...");
+    const nextIndex = activeSourceIndex + 1;
+    if (nextIndex < currentSources.length) {
+        showPlayerToast(`فشل السيرفر الحالي. جاري الانتقال إلى (${currentSources[nextIndex].name}) تلقائياً...`);
         setTimeout(() => {
-            if (document.getElementById('player-section').classList.contains('hidden')) return; // closed
-            nextBtn.click();
+            if (!activeMatchId) return; // closed
+            playSource(currentSources[nextIndex], nextIndex);
         }, 2000);
     } else {
         // No more sources available
         const placeholder = document.getElementById('no-stream-placeholder');
         placeholder.classList.remove('hidden');
         placeholder.querySelector('h3').innerText = 'انقطع البث المباشر';
-        placeholder.querySelector('p').innerText = 'جميع سيرفرات البث خارج الخدمة حالياً، يرجى الانتظار للتحديث.';
+        placeholder.querySelector('p').innerText = 'جميع سيرفرات البث خارج الخدمة حالياً. يرجى الانتظار للتحديث التلقائي.';
+        hidePlayerToast();
     }
 }
 
@@ -383,6 +585,13 @@ function closePlayer() {
     const iframe = document.getElementById('iframe-player');
     const videoPlayerDiv = document.getElementById('video-player');
     const tabsContainer = document.getElementById('sources-tabs');
+    
+    // Clear active match and stop polling
+    activeMatchId = null;
+    activeSourceIndex = -1;
+    currentSources = [];
+    retryCount = 0;
+    stopBackgroundPolling();
     
     // Hide section
     playerSection.classList.add('hidden');

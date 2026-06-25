@@ -58,8 +58,8 @@ def startup_event():
     
     # Schedule Morning Scrape: Every day at 05:00 AM
     scheduler.add_job(job_morning_scrape, 'cron', hour=5, minute=0)
-    # Schedule Stream Link Updater: Every 10 minutes
-    scheduler.add_job(job_stream_update, 'interval', minutes=10)
+    # Schedule Stream Link Updater: Every 3 minutes
+    scheduler.add_job(job_stream_update, 'interval', minutes=3)
     
     scheduler.start()
     print("Scheduler started successfully.")
