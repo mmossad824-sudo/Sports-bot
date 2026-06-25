@@ -44,6 +44,30 @@ def job_stream_update():
 @app.on_event("startup")
 def startup_event():
     init_db()
+    
+    # Inject mock test match for the user to test live streaming
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        mock_id = f"الهلال_النصر_{today_str}"
+        cursor.execute("""
+            INSERT OR REPLACE INTO matches 
+            (id, tournament, teamA, teamB, scoreA, scoreB, time, status, channel, round, logoA, logoB, link, stream_type, stream_url, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            mock_id, "مباراة تجريبية (بث مباشر)", "الهلال", "النصر", "0", "0",
+            "23:00", "جارية الآن", "beIN SPORTS MAX HD1", "ودية",
+            "https://mediayk.gemini.media/img/yallakora/iosteams/120/2018/7/24/AlHilal2018_7_24_17_51.jpg",
+            "https://mediayk.gemini.media/img/yallakora/iosteams/120/2018/7/24/AlNasr2018_7_24_17_51.jpg",
+            "https://www.yallakora.com", "multi", None, datetime.now().isoformat()
+        ))
+        conn.commit()
+        conn.close()
+        print("Mock test match injected successfully.")
+    except Exception as e:
+        print(f"Error injecting mock match: {e}")
+        
     # Run initial scrape and stream update on startup so database is never empty
     print("Running startup scraping tasks...")
     scrape_yallakora()
