@@ -193,11 +193,15 @@ def search_stream_embed(team_a, team_b):
         response = requests.get(url, timeout=15)
         if response.status_code == 200:
             data = response.json()
-            stype = data.get("stream_type")
-            surl = data.get("stream_url")
-            if surl:
-                print(f"Proxy found stream: {surl} ({stype})")
-                return stype, surl
+            if isinstance(data, list) and len(data) > 0:
+                print(f"Proxy found {len(data)} stream sources.")
+                return "multi", json.dumps(data)
+            elif isinstance(data, dict):
+                stype = data.get("stream_type")
+                surl = data.get("stream_url")
+                if surl:
+                    print(f"Proxy found stream: {surl} ({stype})")
+                    return stype, surl
     except Exception as e:
         print(f"Error calling Vercel search proxy: {e}")
         
