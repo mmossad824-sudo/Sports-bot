@@ -238,61 +238,36 @@ function closePlayer() {
 
 // Monetization: Auto-Refresh Banner Ads (Safe & Policy-Compliant)
 function startAdRefreshTimer() {
-    const adPool = [
-        {
-            title: "توقع نتيجة المباراة مجاناً واربح مكافأة ترحيبية 130$ مع 1XBET!",
-            promo: "YALLALIVE",
-            url: "https://1xbet.com",
-            btn: "سجل الآن"
-        },
-        {
-            title: "احصل على بونص إيداع 100% يصل لـ 200$ مع شركة Melbet الرياضية!",
-            promo: "SPORTSBOT",
-            url: "https://melbet.com",
-            btn: "احصل على البونص"
-        },
-        {
-            title: "قناتنا الرسمية في تليجرام تغطي الأهداف والملخصات لحظة بلحظة!",
-            promo: "رابط القناة",
-            url: "https://t.me/your_channel",
-            btn: "اشترك الآن"
-        }
-    ];
+    const adContainer = document.getElementById('banner-ad-container');
+    if (!adContainer) return;
     
-    let adIndex = 0;
-    
-    // Refresh Ad every 3 minutes (180000 milliseconds)
-    setInterval(() => {
-        const adContainer = document.getElementById('banner-ad-container');
-        if (!adContainer) return;
-        
-        adIndex = (adIndex + 1) % adPool.length;
-        const currentAd = adPool[adIndex];
-        
-        console.log(`[Ad Manager] Refreshing banner slot to Ad Index: ${adIndex}`);
-        
-        // In a real network implementation, you would do:
-        // adContainer.innerHTML = '';
-        // const script = document.createElement('script');
-        // script.src = 'https://www.highperformanceformat.com/YOUR_ZONE_ID/invoke.js';
-        // adContainer.appendChild(script);
-        
-        // For our simulated high-conversion banner:
+    function refreshBanner() {
+        console.log('[Ad Manager] Refreshing Adsterra Native Banner...');
         adContainer.style.opacity = 0;
         
         setTimeout(() => {
-            adContainer.innerHTML = `
-                <div class="simulated-ad">
-                    <div class="ad-icon"><i class="fa-solid fa-bullhorn"></i></div>
-                    <div class="ad-text">
-                        <strong>${currentAd.title}</strong>
-                        <p>استخدم الرمز الترويجي: <code>${currentAd.promo}</code> للحصول على العرض فوراً.</p>
-                    </div>
-                    <a href="${currentAd.url}" target="_blank" class="ad-btn">${currentAd.btn} <i class="fa-solid fa-arrow-left"></i></a>
-                </div>
-            `;
+            adContainer.innerHTML = '';
+            
+            // Re-create the container element required by Adsterra
+            const containerDiv = document.createElement('div');
+            containerDiv.id = 'container-3de130477da3485fd755fef311849b77';
+            adContainer.appendChild(containerDiv);
+            
+            // Re-create and append the Adsterra script tag
+            const script = document.createElement('script');
+            script.async = true;
+            script.setAttribute('data-cfasync', 'false');
+            // Cache-busting URL to ensure fresh ad load on each interval
+            script.src = `https://pl29899836.effectivecpmnetwork.com/3de130477da3485fd755fef311849b77/invoke.js?t=${Date.now()}`;
+            
+            adContainer.appendChild(script);
             adContainer.style.opacity = 1;
         }, 300);
-        
-    }, 180000); // 3 minutes refresh rate
+    }
+    
+    // Load immediately on page initialization
+    refreshBanner();
+    
+    // Refresh Ad every 3 minutes (180000 milliseconds)
+    setInterval(refreshBanner, 180000);
 }
