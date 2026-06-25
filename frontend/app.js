@@ -2,7 +2,7 @@
 // Replace this URL with your actual Hugging Face Space API URL once deployed!
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://127.0.0.1:7860'
-    : 'https://mossad-sports-bot.hf.space'; 
+    : 'https://mmossad824-sports-bot.hf.space'; 
 
 let clapprPlayer = null;
 
