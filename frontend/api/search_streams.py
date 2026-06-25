@@ -79,10 +79,15 @@ def search_stream_embed(team_a, team_b):
             for iframe in iframes:
                 src = iframe.get('src')
                 if src:
+                    src = src.strip()
                     if src.startswith('//'):
                         src = f"https:{src}"
+                    if not src.startswith('http') and not src.startswith('https'):
+                        continue
+                    if 'about:blank' in src or 'javascript:' in src:
+                        continue
                     # Skip standard social/ad trackers
-                    if any(x in src for x in ['google', 'facebook', 'twitter', 'youtube', 'doubleclick', 'analytics', 'adsterra', 'googletagmanager', 'whatsapp']):
+                    if any(x in src for x in ['google', 'facebook', 'twitter', 'youtube', 'doubleclick', 'analytics', 'adsterra', 'googletagmanager', 'whatsapp', 'telegram']):
                         continue
                     return "iframe", src
                     
