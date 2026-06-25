@@ -215,11 +215,35 @@ async function openMatchStream(matchId) {
         document.getElementById('footer-channel').innerHTML = `<i class="fa-solid fa-tv"></i> القناة الناقلة: ${match.channel || 'غير معروفة'}`;
         document.getElementById('footer-status').innerHTML = `<i class="fa-solid fa-circle-dot"></i> الحالة: ${match.status}`;
         
-        // If match finished, tell the user
+        // If match finished, play highlights if available, otherwise show placeholder
         if (match.status === 'انتهت') {
-            placeholder.classList.remove('hidden');
-            placeholder.querySelector('h3').innerText = 'انتهت المباراة';
-            placeholder.querySelector('p').innerText = 'الملخصات واللقطات ستكون متوفرة على قناتنا في تليجرام.';
+            if (match.stream_url) {
+                placeholder.classList.add('hidden');
+                document.getElementById('player-title').innerText = `ملخص المباراة: ${match.teamA} VS ${match.teamB}`;
+                
+                // Play Highlight stream based on Type
+                if (match.stream_type === 'hls') {
+                    videoPlayerDiv.classList.remove('hidden');
+                    iframeContainer.classList.add('hidden');
+                    clapprPlayer = new Clappr.Player({
+                        source: match.stream_url,
+                        parentId: "#video-player",
+                        width: '100%',
+                        height: '100%',
+                        autoPlay: true,
+                        mute: false,
+                        mimeType: "application/x-mpegURL"
+                    });
+                } else if (match.stream_type === 'iframe') {
+                    videoPlayerDiv.classList.add('hidden');
+                    iframeContainer.classList.remove('hidden');
+                    document.getElementById('iframe-player').src = match.stream_url;
+                }
+            } else {
+                placeholder.classList.remove('hidden');
+                placeholder.querySelector('h3').innerText = 'انتهت المباراة';
+                placeholder.querySelector('p').innerText = 'الملخصات واللقطات ستكون متوفرة على قناتنا في تليجرام.';
+            }
             return;
         }
         
