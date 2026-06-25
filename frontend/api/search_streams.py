@@ -52,6 +52,10 @@ def search_stream_embed(team_a, team_b):
         except Exception as e:
             print(f"Search error for {query}: {e}")
             
+    # List to store found sources
+    sources = []
+    seen_urls = set()
+    
     # Try extracting HLS or iframe from candidate pages (limited to top 3 for speed)
     for url in found_urls[:3]:
         try:
@@ -62,18 +66,38 @@ def search_stream_embed(team_a, team_b):
             html = response.text
             soup = BeautifulSoup(response.content, 'html.parser')
             
-            # Check for direct m3u8 HLS streams
+            # 1. Look for direct m3u8 HLS streams
             m3u8_links = re.findall(r'(https?://[^\s"\',]+\.m3u8[^\s"\',]*)', html)
             if m3u8_links:
                 for hls_url in m3u8_links:
-                    # Replace escaped unicode characters and clean trailing backslashes/quotes
+                    # Clean trailing backslashes, quotes, or formatting chars and replace unicode escaped ampersands
                     hls_url = hls_url.replace(r'\u0026', '&').replace('\\u0026', '&')
                     hls_url = re.sub(r'[\s"\'\\,]+$', '', hls_url)
                     # Filter out logos/images/static assets
                     if not any(x in hls_url for x in ['logo', 'icon', 'image', 'banner', 'png', 'jpg']):
-                        return "hls", hls_url
+                        if hls_url not in seen_urls:
+                            seen_urls.add(hls_url)
+                            sources.append({
+                                "name": f"سيرفر رئيسي HLS {len(sources)+1}",
+                                "type": "hls",
+                                "url": hls_url
+                            })
+                            
+            # 2. Check for JS HLS player configs
+            js_sources = re.findall(r'source\s*:\s*["\'](https?://.*?\.m3u8.*?)["\']', html)
+            if js_sources:
+                for js_url in js_sources:
+                    js_url = js_url.replace(r'\u0026', '&').replace('\\u0026', '&')
+                    js_url = re.sub(r'[\s"\'\\,]+$', '', js_url)
+                    if js_url not in seen_urls:
+                        seen_urls.add(js_url)
+                        sources.append({
+                            "name": f"سيرفر بديل HLS {len(sources)+1}",
+                            "type": "hls",
+                            "url": js_url
+                        })
                         
-            # Check for iframe players
+            # 3. Check for iframe players
             iframes = soup.find_all('iframe')
             for iframe in iframes:
                 src = iframe.get('src')
@@ -88,19 +112,18 @@ def search_stream_embed(team_a, team_b):
                     # Skip standard social/ad trackers
                     if any(x in src for x in ['google', 'facebook', 'twitter', 'youtube', 'doubleclick', 'analytics', 'adsterra', 'googletagmanager', 'whatsapp', 'telegram']):
                         continue
-                    return "iframe", src
-                    
-            # Check JS player configs
-            js_sources = re.findall(r'source\s*:\s*["\'](https?://.*?\.m3u8.*?)["\']', html)
-            if js_sources:
-                js_url = js_sources[0].replace(r'\u0026', '&').replace('\\u0026', '&')
-                js_url = re.sub(r'[\s"\'\\,]+$', '', js_url)
-                return "hls", js_url
-                
+                    if src not in seen_urls:
+                        seen_urls.add(src)
+                        sources.append({
+                            "name": f"سيرفر خارجي {len(sources)+1}",
+                            "type": "iframe",
+                            "url": src
+                        })
+                        
         except Exception as e:
             print(f"[Search Proxy] Extraction error for {url}: {e}")
             
-    return None, None
+    return sources[:4]
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -117,13 +140,10 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"error": "Missing teamA or teamB"}).encode('utf-8'))
             return
             
-        stype, surl = search_stream_embed(team_a, team_b)
+        sources = search_stream_embed(team_a, team_b)
         
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(json.dumps({
-            "stream_type": stype,
-            "stream_url": surl
-        }).encode('utf-8'))
+        self.wfile.write(json.dumps(sources).encode('utf-8'))
