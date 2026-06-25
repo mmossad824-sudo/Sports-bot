@@ -2,7 +2,7 @@
 // Replace this URL with your actual Hugging Face Space API URL once deployed!
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://127.0.0.1:7860'
-    : 'https://mmossad824-sports-bot.hf.space'; 
+    : window.location.origin; 
 
 let clapprPlayer = null;
 
@@ -91,6 +91,46 @@ function renderMatches(matches) {
     }
 }
 
+// Helper: Format Cairo Time (GMT+3) to Viewer's Local Time
+function formatMatchTime(rawTime) {
+    if (!rawTime || !rawTime.includes(':')) return rawTime;
+    
+    try {
+        const [hours, minutes] = rawTime.split(':').map(Number);
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const hr = String(hours).padStart(2, '0');
+        const min = String(minutes).padStart(2, '0');
+        
+        // Cairo matches are GMT+3
+        const cairoIsoStr = `${year}-${month}-${day}T${hr}:${min}:00+03:00`;
+        const matchDate = new Date(cairoIsoStr);
+        
+        // Formatted to visitor's local system locale
+        const localTimeStr = matchDate.toLocaleTimeString('ar-EG', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        
+        // If timezone matches Cairo (UTC+3), show once
+        if (today.getTimezoneOffset() === -180) {
+            return `<div class="cairo-time">${rawTime} <span class="time-label">(توقيت مصر)</span></div>`;
+        }
+        
+        // Else, show Cairo time + User local time
+        return `
+            <div class="cairo-time">${rawTime} <span class="time-label">(توقيت مصر)</span></div>
+            <div class="local-time">${localTimeStr} <span class="time-label">(توقيتك المحلي)</span></div>
+        `;
+    } catch (e) {
+        console.error("Error formatting time:", e);
+        return rawTime;
+    }
+}
+
 // Render Individual Match Card
 function renderMatchCard(match) {
     let statusClass = 'upcoming';
@@ -110,8 +150,11 @@ function renderMatchCard(match) {
     const logoA = match.logoA || 'https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png';
     const logoB = match.logoB || 'https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png';
     
+    // Escaping single quotes in match.id to prevent inline click handler syntax errors
+    const escapedMatchId = match.id.replace(/'/g, "\\'");
+    
     return `
-        <div class="match-card" onclick="openMatchStream('${match.id}')">
+        <div class="match-card" onclick="openMatchStream('${escapedMatchId}')">
             <div class="match-top">
                 <span class="match-badge ${statusClass}">${pulseHtml} ${statusText}</span>
                 <span class="match-round">${match.round || ''}</span>
@@ -123,7 +166,7 @@ function renderMatchCard(match) {
                 </div>
                 <div class="match-score-center">
                     <div class="score-display">${match.scoreA} - ${match.scoreB}</div>
-                    <div class="match-time">${match.time}</div>
+                    <div class="match-time">${formatMatchTime(match.time)}</div>
                 </div>
                 <div class="team">
                     <img class="team-logo" src="${logoB}" alt="${match.teamB}" onerror="this.src='https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png'">
@@ -156,7 +199,11 @@ async function openMatchStream(matchId) {
     playerSection.scrollIntoView({ behavior: 'smooth' });
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/matches/${matchId}`);
+        // If running locally, fetch FastAPI path directly. If running on Vercel, hit Vercel query proxy
+        const url = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? `${API_BASE_URL}/api/matches/${matchId}`
+            : `${API_BASE_URL}/api/match_detail?id=${encodeURIComponent(matchId)}`;
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Match detail fetch failed');
         
         const match = await response.json();
