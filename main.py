@@ -42,6 +42,13 @@ def startup_event():
     scrape_yallakora()
     update_live_streams()
     
+    # Broadcast to Telegram on startup for testing/initialization
+    try:
+        print("Sending initial Telegram schedule broadcast...")
+        broadcast_schedule()
+    except Exception as e:
+        print(f"Error broadcasting on startup: {e}")
+    
     # Schedule Morning Scrape: Every day at 05:00 AM
     scheduler.add_job(job_morning_scrape, 'cron', hour=5, minute=0)
     # Schedule Stream Link Updater: Every 10 minutes
