@@ -45,6 +45,17 @@ def job_stream_update():
 def startup_event():
     init_db()
     
+    # Clean up old Moroccan League matches from database
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM matches WHERE tournament LIKE '%المغربي%' OR tournament LIKE '%العرش%'")
+        conn.commit()
+        conn.close()
+        print("Database cleaned up (Moroccan League matches deleted).")
+    except Exception as e:
+        print(f"Error cleaning database: {e}")
+        
     # Inject mock test match for the user to test live streaming
     try:
         conn = sqlite3.connect(DB_PATH)
