@@ -19,7 +19,6 @@ def search_stream_embed(team_a, team_b):
     
     queries = [
         f"{team_a} ضد {team_b} بث مباشر يلا شوت",
-        f"{norm_a} ضد {norm_b} بث مباشر",
         f"yalla shoot {norm_a} vs {norm_b}"
     ]
     
@@ -34,7 +33,7 @@ def search_stream_embed(team_a, team_b):
         url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
         
         try:
-            response = requests.get(url, headers=headers, timeout=8)
+            response = requests.get(url, headers=headers, timeout=6)
             if response.status_code == 200:
                 soup = BeautifulSoup(response.content, 'html.parser')
                 result_links = soup.find_all('a', class_='result__url')
@@ -53,13 +52,10 @@ def search_stream_embed(team_a, team_b):
         except Exception as e:
             print(f"Search error for {query}: {e}")
             
-    print(f"[Search Proxy] Found candidate URLs: {found_urls[:8]}")
-    
-    # Try extracting HLS or iframe from candidate pages
-    for url in found_urls[:6]:
+    # Try extracting HLS or iframe from candidate pages (limited to top 3 for speed)
+    for url in found_urls[:3]:
         try:
-            print(f"[Search Proxy] Extracting from: {url}")
-            response = requests.get(url, headers=headers, timeout=8)
+            response = requests.get(url, headers=headers, timeout=6)
             if response.status_code != 200:
                 continue
                 
@@ -70,6 +66,8 @@ def search_stream_embed(team_a, team_b):
             m3u8_links = re.findall(r'(https?://[^\s"\',]+\.m3u8[^\s"\',]*)', html)
             if m3u8_links:
                 for hls_url in m3u8_links:
+                    # Clean trailing backslashes, quotes, or formatting chars
+                    hls_url = re.sub(r'[\s"\'\\,]+$', '', hls_url)
                     # Filter out logos/images/static assets
                     if not any(x in hls_url for x in ['logo', 'icon', 'image', 'banner', 'png', 'jpg']):
                         return "hls", hls_url
@@ -94,7 +92,8 @@ def search_stream_embed(team_a, team_b):
             # Check JS player configs
             js_sources = re.findall(r'source\s*:\s*["\'](https?://.*?\.m3u8.*?)["\']', html)
             if js_sources:
-                return "hls", js_sources[0]
+                js_url = re.sub(r'[\s"\'\\,]+$', '', js_sources[0])
+                return "hls", js_url
                 
         except Exception as e:
             print(f"[Search Proxy] Extraction error for {url}: {e}")
