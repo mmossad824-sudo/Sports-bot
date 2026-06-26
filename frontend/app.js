@@ -359,6 +359,13 @@ async function openMatchStream(matchId) {
         document.getElementById('footer-channel').innerHTML = `<i class="fa-solid fa-tv"></i> القناة الناقلة: ${match.channel || 'غير معروفة'}`;
         document.getElementById('footer-status').innerHTML = `<i class="fa-solid fa-circle-dot"></i> الحالة: ${match.status}`;
         
+        // Set initial document title
+        if (match.status === 'جارية الآن' || match.status.includes('الشوط') || match.status.includes('بين')) {
+            document.title = `(${match.scoreA} - ${match.scoreB}) ${match.teamA} ضد ${match.teamB} | يلا شوت`;
+        } else {
+            document.title = `${match.teamA} ضد ${match.teamB} | يلا شوت`;
+        }
+        
         // Setup sources array
         let sources = [];
         if (match.stream_type === 'multi') {
@@ -457,6 +464,13 @@ async function pollActiveMatchDetails() {
         if (!response.ok) return;
         
         const match = await response.json();
+        
+        // Update document title with live score to keep user engaged in background tabs
+        if (match.status === 'جارية الآن' || match.status.includes('الشوط') || match.status.includes('بين')) {
+            document.title = `(${match.scoreA} - ${match.scoreB}) ${match.teamA} ضد ${match.teamB} | يلا شوت`;
+        } else {
+            document.title = `${match.teamA} ضد ${match.teamB} | يلا شوت`;
+        }
         
         // Setup new sources array
         let newSources = [];
@@ -758,6 +772,9 @@ function closePlayer() {
 
     const extContainer = document.getElementById('external-stream-container');
     if (extContainer) extContainer.classList.add('hidden');
+    
+    // Reset document title to default
+    document.title = "يلا شوت توداي - جدول المباريات والبث المباشر";
     
     // Stop iframe stream
     iframe.src = '';
