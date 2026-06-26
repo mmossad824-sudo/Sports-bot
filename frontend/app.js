@@ -28,9 +28,11 @@ const ADS_CONFIG = {
         cooldownMs: 300000 
     },
     
-    // VAST Video Ads configuration (In-stream pre-roll video ads inside Clappr player)
-    // Paste your Adsterra VAST tag XML URL here to enable video ads. Keep empty to disable.
-    vastAdTag: ''
+    // Adsterra VAST Video Ad tag configuration (Plays video ads inside the player)
+    vast: {
+        enabled: false, // Set to true once you have a VAST tag URL from Adsterra
+        url: '' // Paste your Adsterra VAST XML/URL tag here
+    }
 }; 
 
 let clapprPlayer = null;
@@ -593,7 +595,7 @@ function playSource(source, index) {
         videoPlayerDiv.classList.remove('hidden');
         iframeContainer.classList.add('hidden');
         
-        const clapprConfig = {
+        clapprPlayer = new Clappr.Player({
             source: source.url,
             parentId: "#video-player",
             width: '100%',
@@ -601,29 +603,13 @@ function playSource(source, index) {
             autoPlay: true,
             mute: false,
             mimeType: "application/x-mpegURL",
-            playback: {
-                playInline: true // critical for mobile browser compatibility and inline VAST ads
-            },
             events: {
                 onError: function(err) {
                     console.warn(`Clappr error on source: ${source.name}`, err);
                     handlePlayerError(source, index);
                 }
             }
-        };
-        
-        // Dynamically integrate VAST video ads if tag is configured and script is loaded
-        if (ADS_CONFIG.vastAdTag && typeof ClapprImaPlugin !== 'undefined') {
-            clapprConfig.plugins = [ClapprImaPlugin];
-            clapprConfig.imaPlugin = {
-                imaAdPlayer: {
-                    tag: ADS_CONFIG.vastAdTag
-                }
-            };
-            console.log("[Ad Manager] VAST In-Stream video ads integrated into Clappr.");
-        }
-        
-        clapprPlayer = new Clappr.Player(clapprConfig);
+        });
     } else if (source.type === 'iframe') {
         videoPlayerDiv.classList.add('hidden');
         iframeContainer.classList.remove('hidden');
