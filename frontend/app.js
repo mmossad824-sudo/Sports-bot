@@ -175,17 +175,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const extLink = document.getElementById('external-stream-link');
     if (extLink) {
         extLink.addEventListener('click', (e) => {
-            // Stop propagation to prevent the global popunder handler from triggering a double ad
+            e.preventDefault();
             e.stopPropagation();
             
+            const streamUrl = extLink.getAttribute('href');
             const adUrl = ADS_CONFIG?.popunder?.directLinkUrl;
-            if (adUrl) {
-                console.log("[Ad Manager] External link clicked. Launching direct link ad...");
-                window.open(adUrl, '_blank');
+            
+            if (streamUrl && streamUrl !== '#' && streamUrl !== '') {
+                console.log("[Ad Manager] External link clicked. Opening ad and stream tabs...");
+                
+                // 1. Open the ad first (opens in background tab relative to the stream)
+                if (adUrl) {
+                    window.open(adUrl, '_blank');
+                }
+                
+                // 2. Open the match stream second (this will be focused in the foreground)
+                window.open(streamUrl, '_blank');
+                
                 // Reset global popunder cooldown to avoid annoying the user immediately after
                 lastPopunderTime = Date.now();
             }
-            // The browser's native target="_blank" will open the external match URL in a separate tab.
         });
     }
 });
