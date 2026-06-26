@@ -10,6 +10,7 @@
     { "src": "/api/matches", "dest": "api/matches.py" },
     { "src": "/api/match_detail", "dest": "api/match_detail.py" },
     { "src": "/api/search_streams", "dest": "api/search_streams.py" },
+    { "src": "/api/telegram_proxy", "dest": "api/telegram_proxy.py" },
     { "src": "/(.*)", "dest": "/$1" }
   ],
   "crons": [

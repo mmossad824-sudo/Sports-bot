@@ -14,7 +14,6 @@ def send_telegram_message(text, parse_mode="HTML", reply_markup=None):
         print("Telegram BOT_TOKEN or CHANNEL_ID not configured.")
         return False
         
-    url = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
         "text": text,
@@ -25,16 +24,47 @@ def send_telegram_message(text, parse_mode="HTML", reply_markup=None):
     if reply_markup:
         payload["reply_markup"] = reply_markup
         
+    # Check if we should use Vercel proxy to bypass Hugging Face outbound blocks
+    # Use proxy by default if WEBSITE_URL is configured and is not local
+    use_proxy = False
+    if WEBSITE_URL and "localhost" not in WEBSITE_URL and "127.0.0.1" not in WEBSITE_URL and "your-vercel-domain" not in WEBSITE_URL:
+        use_proxy = True
+        
+    if use_proxy:
+        url = f"{WEBSITE_URL.rstrip('/')}/api/telegram_proxy"
+        payload["token"] = BOT_TOKEN
+        print(f"[Telegram Client] Routing message through Vercel proxy: {url}")
+    else:
+        url = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendMessage"
+        print(f"[Telegram Client] Sending message directly to Telegram API: {url}")
+        
     try:
-        response = requests.post(url, json=payload, timeout=10)
+        response = requests.post(url, json=payload, timeout=15)
         if response.status_code == 200:
             print("Telegram message sent successfully.")
             return True
         else:
             print(f"Failed to send Telegram message: {response.text}")
+            # If proxy failed, fallback directly
+            if use_proxy:
+                fallback_url = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendMessage"
+                print(f"[Telegram Client] Proxy failed. Trying direct fallback to Telegram API...")
+                payload.pop("token", None)
+                fb_resp = requests.post(fallback_url, json=payload, timeout=10)
+                return fb_resp.status_code == 200
             return False
     except Exception as e:
         print(f"Error sending Telegram message: {e}")
+        # Direct fallback on exception
+        if use_proxy:
+            try:
+                fallback_url = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendMessage"
+                print(f"[Telegram Client] Proxy exception. Trying direct fallback to Telegram API...")
+                payload.pop("token", None)
+                fb_resp = requests.post(fallback_url, json=payload, timeout=10)
+                return fb_resp.status_code == 200
+            except Exception as ex:
+                print(f"Fallback failed: {ex}")
         return False
 
 def format_daily_schedule():
