@@ -509,24 +509,9 @@ def update_finished_matches_highlights():
     website_url = os.getenv("WEBSITE_URL", "https://yalla-shoot-today.vercel.app")
     
     for match_id, team_a, team_b, tournament, stream_url in finished_matches:
-        # First, try to fetch highlights from ScoreBat API (100% stable & official European matches)
-        embed_url = get_scorebat_embed_url(team_a, team_b)
-        
-        if embed_url:
-            print(f"[Highlights] Found official ScoreBat highlights for {team_a} VS {team_b}: {embed_url}")
-            sources = [{
-                "name": "ملخص وأهداف المباراة (سيرفر رسمي)",
-                "type": "iframe",
-                "url": embed_url
-            }]
-            sources_json = json.dumps(sources)
-            cursor.execute("""
-                UPDATE matches 
-                SET stream_type = 'multi', stream_url = ?, updated_at = ? 
-                WHERE id = ?
-            """, (sources_json, datetime.now().isoformat(), match_id))
-            print(f"[Highlights] Successfully updated ScoreBat highlights for {team_a} VS {team_b}")
-            continue
+        # ScoreBat bypassed - User requested YouTube highlights only
+        # embed_url = get_scorebat_embed_url(team_a, team_b)
+        embed_url = None
             
         # If not found on ScoreBat, fallback to Vercel YouTube highlights search proxy
         import urllib.parse

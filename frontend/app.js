@@ -719,41 +719,83 @@ function closePlayer() {
     videoPlayerDiv.innerHTML = '';
 }
 
+// Rotating Direct Link Offers under Video Player (High CPM conversion)
+const DIRECT_LINK_OFFERS = [
+    {
+        title: "🎁 توقع نتيجة المباراة مجاناً واربح مكافأة 130$!",
+        desc: "استخدم الرمز الترويجي YALLALIVE للحصول على بونص التسجيل الفوري مع 1XBET.",
+        btnText: "سجل واربح الآن",
+        icon: "fa-gift"
+    },
+    {
+        title: "🔥 اشترك في القناة الرسمية لمشاهدة بدون تقطيع وبأعلى جودة!",
+        desc: "البث المباشر والملخصات والأهداف تصلك فوراً على تليجرام مجاناً.",
+        btnText: "انضم الآن",
+        icon: "fa-bell"
+    },
+    {
+        title: "⚡ حمل تطبيق مشاهدة مباريات اليوم مجاناً للأندرويد والآيفون!",
+        desc: "تطبيق خفيف وسريع يعرض البث المباشر لجميع المباريات والبطولات.",
+        btnText: "تحميل التطبيق",
+        icon: "fa-download"
+    }
+];
+let currentOfferIndex = 0;
+
 // Monetization: Auto-Refresh Banner Ads (Safe & Policy-Compliant)
 function startAdRefreshTimer() {
-    const adContainer = document.getElementById('banner-ad-container');
-    if (!adContainer) return;
+    const adContainer1 = document.getElementById('banner-ad-container-1');
+    const adContainer2 = document.getElementById('banner-ad-container-2');
+    if (!adContainer1 && !adContainer2) return;
     
     const banner = ADS_CONFIG.bannerAd;
     
     function refreshBanner() {
-        console.log('[Ad Manager] Refreshing Adsterra Native Banner...');
-        adContainer.style.opacity = 0;
+        console.log('[Ad Manager] Refreshing Adsterra Banners...');
+        if (adContainer1) adContainer1.style.opacity = 0;
+        if (adContainer2) adContainer2.style.opacity = 0;
         
         setTimeout(() => {
-            adContainer.innerHTML = '';
+            // 1. Refresh Slot 1 (Official Adsterra Banner)
+            if (adContainer1) {
+                adContainer1.innerHTML = '';
+                const containerDiv = document.createElement('div');
+                containerDiv.id = banner.containerId;
+                adContainer1.appendChild(containerDiv);
+                
+                const script = document.createElement('script');
+                script.async = true;
+                script.setAttribute('data-cfasync', 'false');
+                script.src = `https://${banner.domain}/${banner.scriptHash}/invoke.js?t=${Date.now()}`;
+                
+                adContainer1.appendChild(script);
+                adContainer1.style.opacity = 1;
+            }
             
-            // Re-create the container element required by Adsterra
-            const containerDiv = document.createElement('div');
-            containerDiv.id = banner.containerId;
-            adContainer.appendChild(containerDiv);
-            
-            // Re-create and append the Adsterra script tag
-            const script = document.createElement('script');
-            script.async = true;
-            script.setAttribute('data-cfasync', 'false');
-            // Cache-busting URL to ensure fresh ad load on each interval
-            script.src = `https://${banner.domain}/${banner.scriptHash}/invoke.js?t=${Date.now()}`;
-            
-            adContainer.appendChild(script);
-            adContainer.style.opacity = 1;
+            // 2. Refresh Slot 2 (Rotating Direct Link Banner)
+            if (adContainer2) {
+                const offer = DIRECT_LINK_OFFERS[currentOfferIndex];
+                currentOfferIndex = (currentOfferIndex + 1) % DIRECT_LINK_OFFERS.length;
+                
+                adContainer2.innerHTML = `
+                    <div class="simulated-ad">
+                        <div class="ad-icon"><i class="fa-solid ${offer.icon}"></i></div>
+                        <div class="ad-text">
+                            <strong>${offer.title}</strong>
+                            <p>${offer.desc}</p>
+                        </div>
+                        <a href="${ADS_CONFIG.popunder.directLinkUrl}" target="_blank" class="ad-btn">${offer.btnText} <i class="fa-solid fa-arrow-left"></i></a>
+                    </div>
+                `;
+                adContainer2.style.opacity = 1;
+            }
         }, 300);
     }
     
     // Load immediately on page initialization
     refreshBanner();
     
-    // Refresh Ad at configured interval
+    // Refresh Ads at configured interval (e.g. 3 minutes)
     setInterval(refreshBanner, banner.refreshIntervalMs);
 }
 

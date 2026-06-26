@@ -8,6 +8,7 @@ CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "")
 DB_PATH = os.path.join(os.path.dirname(__file__), "matches.db")
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://your-vercel-domain.vercel.app")
 TELEGRAM_API_URL = os.getenv("TELEGRAM_API_URL", "https://api.telegram.org").rstrip('/')
+SPONSOR_URL = "https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039"
 
 def get_tournament_emoji(tour_name):
     tour_normalized = tour_name.lower()
@@ -316,7 +317,8 @@ def check_and_send_alerts():
             )
             reply_markup = {
                 "inline_keyboard": [
-                    [{"text": "📺 شاهد المباراة بث مباشر الآن", "url": WEBSITE_URL}]
+                    [{"text": "📺 شاهد المباراة بث مباشر الآن", "url": WEBSITE_URL}],
+                    [{"text": "🎁 توقع نتيجة المباراة واربح مكافأة 130$", "url": SPONSOR_URL}]
                 ]
             }
             if send_telegram_message(text, reply_markup=reply_markup):
@@ -356,7 +358,8 @@ def check_and_send_alerts():
                     )
                     reply_markup = {
                         "inline_keyboard": [
-                            [{"text": "📺 شاهد الهدف والبث المباشر", "url": WEBSITE_URL}]
+                            [{"text": "📺 شاهد الهدف والبث المباشر", "url": WEBSITE_URL}],
+                            [{"text": "🎁 توقع نتيجة المباراة واربح مكافأة 130$", "url": SPONSOR_URL}]
                         ]
                     }
                     send_telegram_message(text, reply_markup=reply_markup)
@@ -383,7 +386,8 @@ def check_and_send_alerts():
             )
             reply_markup = {
                 "inline_keyboard": [
-                    [{"text": "📺 تابع البث المباشر الآن", "url": WEBSITE_URL}]
+                    [{"text": "📺 تابع البث المباشر الآن", "url": WEBSITE_URL}],
+                    [{"text": "🎁 توقع نتيجة المباراة واربح مكافأة 130$", "url": SPONSOR_URL}]
                 ]
             }
             if send_telegram_message(text, reply_markup=reply_markup):
@@ -405,7 +409,8 @@ def check_and_send_alerts():
             )
             reply_markup = {
                 "inline_keyboard": [
-                    [{"text": "🎬 شاهد أهداف وملخص المباراة", "url": WEBSITE_URL}]
+                    [{"text": "🎬 شاهد أهداف وملخص المباراة", "url": WEBSITE_URL}],
+                    [{"text": "🎁 توقع نتيجة المباراة واربح مكافأة 130$", "url": SPONSOR_URL}]
                 ]
             }
             if send_telegram_message(text, reply_markup=reply_markup):

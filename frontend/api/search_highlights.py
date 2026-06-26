@@ -21,7 +21,17 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"error": "Missing teamA or teamB"}).encode('utf-8'))
             return
             
-        query = f"{team_a} ضد {team_b} ملخص اهداف {tournament}"
+        # Determine the official broadcaster to prioritize high-quality highlights
+        broadcaster = ""
+        tour_lower = tournament.lower()
+        if any(x in tour_lower for x in ["إنجليزي", "انجليزي", "إسباني", "اسباني", "إيطالي", "ايطالي", "فرنسي", "ألماني", "الماني", "أبطال أوروبا", "ابطال اوروبا", "أمم أفريقيا", "امم افريقيا", "أمم أوروبا", "اليورو", "كأس العالم"]):
+            broadcaster = "bein sports"
+        elif any(x in tour_lower for x in ["سعودي", "روشن", "آسيا", "اسيا"]):
+            broadcaster = "ssc"
+        elif any(x in tour_lower for x in ["مصر", "الدوري المصري"]):
+            broadcaster = "اون تايم"
+            
+        query = f"{team_a} ضد {team_b} ملخص اهداف {broadcaster}"
         url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
         
         headers = {
