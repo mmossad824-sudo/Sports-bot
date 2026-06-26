@@ -171,30 +171,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // External Stream Link Event (bypasses popunder cooldown and opens both stream and ad)
+    // External Stream Link Event (opens only the stream link to avoid popup blockers)
     const extLink = document.getElementById('external-stream-link');
     if (extLink) {
         extLink.addEventListener('click', (e) => {
-            e.preventDefault();
+            // Stop propagation to prevent the global popunder handler from opening an ad tab
             e.stopPropagation();
-            
-            const streamUrl = extLink.getAttribute('href');
-            const adUrl = ADS_CONFIG?.popunder?.directLinkUrl;
-            
-            if (streamUrl && streamUrl !== '#' && streamUrl !== '') {
-                console.log("[Ad Manager] External link clicked. Opening ad and stream tabs...");
-                
-                // 1. Open the ad first (opens in background tab relative to the stream)
-                if (adUrl) {
-                    window.open(adUrl, '_blank');
-                }
-                
-                // 2. Open the match stream second (this will be focused in the foreground)
-                window.open(streamUrl, '_blank');
-                
-                // Reset global popunder cooldown to avoid annoying the user immediately after
-                lastPopunderTime = Date.now();
-            }
+            console.log("[Player Manager] Opening external stream tab natively...");
         });
     }
 });
