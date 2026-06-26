@@ -31,7 +31,10 @@ def should_include_match(tour_name, team_a, team_b):
         "كأس العالم", "الدوري المصري", "كأس مصر", "السوبر المصري", 
         "كأس العالم للأندية", "دوري أبطال", "الدوري الإنجليزي", 
         "كأس الاتحاد الإنجليزي", "كأس العرب", "كأس الأمم", 
-        "الدوري السعودي", "كأس خادم الحرمين الشريفين", "كأس السوبر"
+        "الدوري السعودي", "كأس خادم الحرمين الشريفين", "كأس السوبر",
+        "الدوري الإسباني", "الدوري الإيطالي", "الدوري الألماني", 
+        "الدوري الفرنسي", "الدوري الأوروبي", "دوري المؤتمر الأوروبي", 
+        "كأس ملك إسبانيا", "كأس إيطاليا", "كأس الرابطة الإنجليزية", "كأس إسبانيا"
     ]
     
     # Whitelist keywords for key teams
@@ -218,6 +221,8 @@ def scrape_yallakora(date_str=None):
                     img = team_a.find('img')
                     if img:
                         logo_a = img.get('src') or img.get('data-src') or ""
+                        if logo_a:
+                            logo_a = logo_a.replace('\\', '/')
                 
                 # Team B
                 team_b = row.find('div', class_='teamB')
@@ -228,6 +233,8 @@ def scrape_yallakora(date_str=None):
                     img = team_b.find('img')
                     if img:
                         logo_b = img.get('src') or img.get('data-src') or ""
+                        if logo_b:
+                            logo_b = logo_b.replace('\\', '/')
                 
                 # Filter out uninteresting matches and specifically Moroccan League matches
                 if not should_include_match(tour_name, team_a_name, team_b_name):

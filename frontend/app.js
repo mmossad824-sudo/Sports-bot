@@ -600,10 +600,30 @@ function playSource(source, index) {
     const extLink = document.getElementById('external-stream-link');
     const extContainer = document.getElementById('external-stream-container');
     if (extLink && extContainer) {
-        extLink.href = source.url;
+        let displayUrl = source.url;
+        const isYouTube = source.url.includes('youtube.com') || source.url.includes('youtu.be');
+        
+        // If it's a YouTube embed URL, convert it to a standard watch URL for external playback
+        if (isYouTube && displayUrl.includes('/embed/')) {
+            const videoId = displayUrl.split('/embed/')[1]?.split('?')[0];
+            if (videoId) {
+                displayUrl = `https://www.youtube.com/watch?v=${videoId}`;
+            }
+        }
+        
+        extLink.href = displayUrl;
+        
+        const spanText = extLink.querySelector('span');
+        if (spanText) {
+            if (isYouTube) {
+                spanText.innerText = "صاحب الفيديو منع تشغيله خارج يوتيوب. اضغط هنا لمشاهدة ملخص المباراة على يوتيوب مباشرة 🎬";
+            } else {
+                spanText.innerText = "إذا لم يعمل البث أو ظهرت شاشة سوداء، اضغط هنا للمشاهدة في صفحة خارجية مباشرة";
+            }
+        }
         
         // Dynamically set rel="noreferrer" based on source type to avoid blocking YouTube
-        if (source.url.includes('youtube.com') || source.url.includes('youtu.be')) {
+        if (isYouTube) {
             extLink.removeAttribute('rel');
         } else {
             extLink.setAttribute('rel', 'noreferrer');

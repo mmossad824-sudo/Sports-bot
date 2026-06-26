@@ -28,6 +28,41 @@ def send_telegram_message(text, reply_markup=None):
         print(f"Error: {e}")
         return False
 
+def should_include_match(tour_name, team_a, team_b):
+    tour_normalized = tour_name.lower()
+    team_a_norm = team_a.lower()
+    team_b_norm = team_b.lower()
+    
+    if "المغربي" in tour_normalized or "كأس العرش" in tour_normalized or "المغرب الفاسي" in team_a_norm or "المغرب الفاسي" in team_b_norm:
+        return False
+        
+    whitelist_tournaments = [
+        "كأس العالم", "الدوري المصري", "كأس مصر", "السوبر المصري", 
+        "كأس العالم للأندية", "دوري أبطال", "الدوري الإنجليزي", 
+        "كأس الاتحاد الإنجليزي", "كأس العرب", "كأس الأمم", 
+        "الدوري السعودي", "كأس خادم الحرمين الشريفين", "كأس السوبر",
+        "الدوري الإسباني", "الدوري الإيطالي", "الدوري الألماني", 
+        "الدوري الفرنسي", "الدوري الأوروبي", "دوري المؤتمر الأوروبي", 
+        "كأس ملك إسبانيا", "كأس إيطاليا", "كأس الرابطة الإنجليزية", "كأس إسبانيا"
+    ]
+    
+    whitelist_teams = [
+        "برشلونة", "ريال مدريد", "أتلتيكو مدريد", "أتليتكو مدريد", 
+        "انتر ميامي", "إنتر ميامي", "الهلال", "النصر", "الاتحاد", 
+        "الأهلي", "الزمالك", "بيراميدز", "ليفربول", "مانشستر", 
+        "أرسنال", "تشيلسي", "بايرن", "باريس", "يوفنتوس"
+    ]
+    
+    for kw in whitelist_tournaments:
+        if kw in tour_normalized:
+            return True
+            
+    for kw in whitelist_teams:
+        if kw in team_a_norm or kw in team_b_norm:
+            return True
+            
+    return False
+
 def scrape_and_format():
     now = datetime.now()
     date_str = f"{now.month}/{now.day}/{now.year}"
@@ -75,6 +110,10 @@ def scrape_and_format():
                 team_b = row.find('div', class_='teamB')
                 team_b_name = team_b.find('p').text.strip() if team_b and team_b.find('p') else "فريق ب"
                 
+                # Filter out uninteresting matches
+                if not should_include_match(tour_name, team_a_name, team_b_name):
+                    continue
+                
                 score_a = "-"
                 score_b = "-"
                 match_time = "-"
@@ -103,13 +142,20 @@ def scrape_and_format():
                 by_tour[tour_name].append((team_a_name, team_b_name, score_a, score_b, match_time, status_desc, channel))
                 
         msg = f"📅 <b>جدول مباريات اليوم ({datetime.now().strftime('%Y-%m-%d')})</b>\n\n"
+        has_matches = False
         for tour, matches in by_tour.items():
+            if not matches:
+                continue
+            has_matches = True
             msg += f"🏆 <b>{tour}</b>:\n"
             for team_a, team_b, score_a, score_b, time_str, status_desc, channel in matches:
                 channel_info = f" | 📺 {channel}" if channel else ""
                 status_info = f" ({status_desc})" if status_desc != "لم تبدأ" else ""
                 score_info = f" [{score_a} - {score_b}]" if status_desc != "لم تبدأ" else ""
                 msg += f"  🔹 {team_a} 🆚 {team_b}{score_info}\n  ⏰ {time_str}{channel_info}{status_info}\n\n"
+                
+        if not has_matches:
+            return "📅 لا توجد مباريات هامة مجدولة اليوم."
                 
         msg += f"🔗 تابع المباريات مباشرة وبدون تقطيع على موقعنا:\n{WEBSITE_URL}"
         return msg
@@ -118,6 +164,13 @@ def scrape_and_format():
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        # Ping Hugging Face Space to wake it up if sleeping
+        try:
+            print("Pinging Hugging Face Space to wake it up...")
+            requests.get("https://mmossad824-sports-bot.hf.space/", timeout=5)
+        except Exception as e:
+            print(f"Failed to wake up Hugging Face Space: {e}")
+            
         # Scrape and broadcast
         text = scrape_and_format()
         reply_markup = {

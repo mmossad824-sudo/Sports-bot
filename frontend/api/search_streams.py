@@ -13,6 +13,72 @@ SYNONYMS = {
     "الولايات المتحدة": "أمريكا",
 }
 
+TRANSLATIONS = {
+    "برشلونة": "barcelona",
+    "ريال مدريد": "real madrid",
+    "أتلتيكو مدريد": "atletico madrid",
+    "أتليتكو مدريد": "atletico madrid",
+    "ليفربول": "liverpool",
+    "مانشستر سيتي": "manchester city",
+    "مانشستر يونايتد": "manchester united",
+    "أرسنال": "arsenal",
+    "ارسنال": "arsenal",
+    "تشيلسي": "chelsea",
+    "توتنهام": "tottenham",
+    "بايرن ميونخ": "bayern",
+    "بايرن": "bayern",
+    "باريس سان جيرمان": "psg",
+    "باريس": "psg",
+    "يوفنتوس": "juventus",
+    "إنتر ميلان": "inter",
+    "انتر ميلان": "inter",
+    "ميلان": "ac milan",
+    "روما": "roma",
+    "نابولي": "napoli",
+    "بروسيا دورتموند": "dortmund",
+    "دورتموند": "dortmund",
+    "أياكس": "ajax",
+    "اياكس": "ajax",
+    "النرويج": "norway",
+    "فرنسا": "france",
+    "اليابان": "japan",
+    "السويد": "sweden",
+    "تونس": "tunisia",
+    "هولندا": "netherlands",
+    "باراجواي": "paraguay",
+    "باراغواي": "paraguay",
+    "أستراليا": "australia",
+    "تركيا": "turkey",
+    "أمريكا": "usa",
+    "السنغال": "senegal",
+    "العراق": "iraq",
+    "بلجيكا": "belgium",
+    "إسبانيا": "spain",
+    "اسبانيا": "spain",
+    "إنجلترا": "england",
+    "انجلترا": "england",
+    "البرتغال": "portugal",
+    "كرواتيا": "croatia",
+    "الأرجنتين": "argentina",
+    "الارجنتين": "argentina",
+    "البرازيل": "brazil",
+    "المغرب": "morocco",
+    "هايتى": "haiti",
+    "هايتي": "haiti",
+    "إسكتلندا": "scotland",
+    "اسكتلندا": "scotland",
+    "التشيك": "czech",
+    "المكسيك": "mexico",
+    "جنوب أفريقيا": "south africa",
+    "جنوب افريقيا": "south africa",
+    "كوريا الجنوبية": "south korea",
+    "إكوادور": "ecuador",
+    "اكوادور": "ecuador",
+    "أوروغواي": "uruguay",
+    "أوروجواي": "uruguay",
+    "إيطاليا": "italy",
+}
+
 def normalize(text):
     if not text:
         return ""
@@ -155,13 +221,14 @@ def search_stream_embed(team_a, team_b, channel=""):
 
     # 2. Fallback search on DuckDuckGo if we need more links
     if len(raw_sources) < 3:
-        norm_a = re.sub(r'[أإآ]', 'ا', team_a).replace('ة', 'ه')
-        norm_b = re.sub(r'[أإآ]', 'ا', team_b).replace('ة', 'ه')
+        # Translate to English if translation exists to get better English stream results
+        eng_a = TRANSLATIONS.get(team_a.strip(), team_a)
+        eng_b = TRANSLATIONS.get(team_b.strip(), team_b)
         
         queries = [
             f"{team_a} ضد {team_b} بث مباشر يلا شوت الاسطورة كورة لايف",
-            f"yalla shoot {norm_a} vs {norm_b} streamonsport daddylive livehd7",
-            f"{team_a} vs {team_b} live stream totalsportek buffstreams",
+            f"yalla shoot {eng_a} vs {eng_b} streamonsport daddylive livehd7",
+            f"{eng_a} vs {eng_b} live stream totalsportek buffstreams",
             f"{team_a} ضد {team_b} كورة فور لايف في العارضة كورة سيتي"
         ]
         
