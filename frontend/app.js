@@ -571,6 +571,14 @@ function playSource(source, index) {
     // Hide toast overlays
     hidePlayerToast();
     placeholder.classList.add('hidden');
+
+    // Update external link href and display
+    const extLink = document.getElementById('external-stream-link');
+    const extContainer = document.getElementById('external-stream-container');
+    if (extLink && extContainer) {
+        extLink.href = source.url;
+        extContainer.classList.remove('hidden');
+    }
     
     // Clean previous players
     if (clapprPlayer) {
@@ -747,6 +755,9 @@ function closePlayer() {
     
     const overlayAd = document.getElementById('player-overlay-ad');
     if (overlayAd) overlayAd.classList.add('hidden');
+
+    const extContainer = document.getElementById('external-stream-container');
+    if (extContainer) extContainer.classList.add('hidden');
     
     // Stop iframe stream
     iframe.src = '';

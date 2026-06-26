@@ -110,6 +110,13 @@
                 </div>
 
                 <div class="player-footer">
+                    <!-- Direct link fallback button if iframe embedding is blocked -->
+                    <div id="external-stream-container" class="external-stream-container" style="margin-bottom: 15px; width: 100%;">
+                        <a id="external-stream-link" href="#" target="_blank" class="ad-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #e11d48; border-color: #e11d48; text-decoration: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; text-align: center; color: white; font-size: 0.95rem; box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4); font-family: var(--font-ar); transition: var(--transition);">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            <span>إذا لم يعمل البث أو ظهرت شاشة سوداء، اضغط هنا للمشاهدة في صفحة خارجية مباشرة</span>
+                        </a>
+                    </div>
                     <div class="match-info-bar">
                         <div class="match-teams-info">
                             <span id="footer-team-a">فريق أ</span>
