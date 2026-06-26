@@ -655,9 +655,11 @@ function playSource(source, index) {
         iframeContainer.classList.remove('hidden');
         if (source.url.includes('youtube.com') || source.url.includes('youtu.be')) {
             iframe.removeAttribute('referrerpolicy');
+            iframe.removeAttribute('sandbox');
             iframe.src = source.url;
         } else {
             iframe.setAttribute('referrerpolicy', 'no-referrer');
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation allow-popups allow-popups-to-escape-sandbox');
             iframe.src = `${API_BASE_URL}/api/proxy?url=${encodeURIComponent(source.url)}`;
         }
     }
