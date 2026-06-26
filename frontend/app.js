@@ -26,7 +26,11 @@ const ADS_CONFIG = {
         directLinkUrl: 'https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039', // replace with your actual Direct Link
         // Cooling down period: once clicked, don't trigger another popunder for 5 minutes (300000ms)
         cooldownMs: 300000 
-    }
+    },
+    
+    // VAST Video Ads configuration (In-stream pre-roll video ads inside Clappr player)
+    // Paste your Adsterra VAST tag XML URL here to enable video ads. Keep empty to disable.
+    vastAdTag: ''
 }; 
 
 let clapprPlayer = null;
@@ -589,7 +593,7 @@ function playSource(source, index) {
         videoPlayerDiv.classList.remove('hidden');
         iframeContainer.classList.add('hidden');
         
-        clapprPlayer = new Clappr.Player({
+        const clapprConfig = {
             source: source.url,
             parentId: "#video-player",
             width: '100%',
@@ -597,13 +601,29 @@ function playSource(source, index) {
             autoPlay: true,
             mute: false,
             mimeType: "application/x-mpegURL",
+            playback: {
+                playInline: true // critical for mobile browser compatibility and inline VAST ads
+            },
             events: {
                 onError: function(err) {
                     console.warn(`Clappr error on source: ${source.name}`, err);
                     handlePlayerError(source, index);
                 }
             }
-        });
+        };
+        
+        // Dynamically integrate VAST video ads if tag is configured and script is loaded
+        if (ADS_CONFIG.vastAdTag && typeof ClapprImaPlugin !== 'undefined') {
+            clapprConfig.plugins = [ClapprImaPlugin];
+            clapprConfig.imaPlugin = {
+                imaAdPlayer: {
+                    tag: ADS_CONFIG.vastAdTag
+                }
+            };
+            console.log("[Ad Manager] VAST In-Stream video ads integrated into Clappr.");
+        }
+        
+        clapprPlayer = new Clappr.Player(clapprConfig);
     } else if (source.type === 'iframe') {
         videoPlayerDiv.classList.add('hidden');
         iframeContainer.classList.remove('hidden');
