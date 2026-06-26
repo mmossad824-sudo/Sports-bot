@@ -528,9 +528,8 @@ def update_finished_matches_highlights():
         SELECT id, teamA, teamB, tournament, stream_url 
         FROM matches 
         WHERE status = 'انتهت' 
-          AND (match_date = ? OR match_date IS NULL)
-          AND (stream_url IS NULL OR stream_url NOT LIKE '%scorebat%' AND stream_url NOT LIKE '%youtube%' AND stream_url NOT LIKE '%youtu.be%')
-    """, (cairo_today,))
+          AND (stream_url IS NULL OR (stream_url NOT LIKE '%scorebat%' AND stream_url NOT LIKE '%youtube%' AND stream_url NOT LIKE '%youtu.be%'))
+    """)
     
     finished_matches = cursor.fetchall()
     if not finished_matches:

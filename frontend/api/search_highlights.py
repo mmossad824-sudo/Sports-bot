@@ -31,7 +31,7 @@ class handler(BaseHTTPRequestHandler):
         elif any(x in tour_lower for x in ["مصر", "الدوري المصري"]):
             broadcaster = "اون تايم"
             
-        query = f"{team_a} ضد {team_b} ملخص اهداف {broadcaster}"
+        query = f"ملخص مباراة {team_a} ضد {team_b} كامل {broadcaster}".strip()
         url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
         
         headers = {
@@ -42,7 +42,23 @@ class handler(BaseHTTPRequestHandler):
         try:
             r = requests.get(url, headers=headers, timeout=10)
             if r.status_code == 200:
-                video_ids = re.findall(r'\"/watch\?v=([a-zA-Z0-9_-]{11})\"', r.text)
+                video_ids = []
+                
+                # Pattern 1: JSON videoId field (Highly reliable on modern YouTube search pages)
+                json_ids = re.findall(r'\"videoId\":\"([a-zA-Z0-9_-]{11})\"', r.text)
+                if json_ids:
+                    video_ids.extend(json_ids)
+                    
+                # Pattern 2: Standard watch links in quotes
+                link_ids = re.findall(r'\"/watch\?v=([a-zA-Z0-9_-]{11})\"', r.text)
+                if link_ids:
+                    video_ids.extend(link_ids)
+                    
+                # Pattern 3: Escaped watch links
+                escaped_ids = re.findall(r'/watch\?v\\u003d([a-zA-Z0-9_-]{11})', r.text)
+                if escaped_ids:
+                    video_ids.extend(escaped_ids)
+                
                 if video_ids:
                     seen = set()
                     unique_ids = [x for x in video_ids if not (x in seen or seen.add(x))]
