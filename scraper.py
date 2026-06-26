@@ -378,6 +378,109 @@ def update_live_streams():
     conn.close()
     print(f"Stream links update finished. Updated {updated_count} matches.")
 
+def get_scorebat_embed_url(team_a, team_b):
+    TRANSLATIONS = {
+        "برشلونة": "barcelona",
+        "ريال مدريد": "real madrid",
+        "أتلتيكو مدريد": "atletico madrid",
+        "أتليتكو مدريد": "atletico madrid",
+        "ليفربول": "liverpool",
+        "مانشستر سيتي": "manchester city",
+        "مانشستر يونايتد": "manchester united",
+        "أرسنال": "arsenal",
+        "ارسنال": "arsenal",
+        "تشيلسي": "chelsea",
+        "توتنهام": "tottenham",
+        "بايرن ميونخ": "bayern",
+        "بايرن": "bayern",
+        "باريس سان جيرمان": "psg",
+        "باريس": "psg",
+        "يوفنتوس": "juventus",
+        "إنتر ميلان": "inter",
+        "انتر ميلان": "inter",
+        "ميلان": "ac milan",
+        "روما": "roma",
+        "نابولي": "napoli",
+        "بروسيا دورتموند": "dortmund",
+        "دورتموند": "dortmund",
+        "أياكس": "ajax",
+        "اياكس": "ajax",
+        "النرويج": "norway",
+        "فرنسا": "france",
+        "اليابان": "japan",
+        "السويد": "sweden",
+        "تونس": "tunisia",
+        "هولندا": "netherlands",
+        "باراجواي": "paraguay",
+        "باراغواي": "paraguay",
+        "أستراليا": "australia",
+        "تركيا": "turkey",
+        "أمريكا": "usa",
+        "السنغال": "senegal",
+        "العراق": "iraq",
+        "بلجيكا": "belgium",
+        "إسبانيا": "spain",
+        "اسبانيا": "spain",
+        "إنجلترا": "england",
+        "انجلترا": "england",
+        "البرتغال": "portugal",
+        "كرواتيا": "croatia",
+        "الأرجنتين": "argentina",
+        "الارجنتين": "argentina",
+        "البرازيل": "brazil",
+        "المغرب": "morocco",
+        "هايتى": "haiti",
+        "هايتي": "haiti",
+        "إسكتلندا": "scotland",
+        "اسكتلندا": "scotland",
+        "التشيك": "czech",
+        "المكسيك": "mexico",
+        "جنوب أفريقيا": "south africa",
+        "جنوب افريقيا": "south africa",
+        "كوريا الجنوبية": "south korea",
+        "إكوادور": "ecuador",
+        "اكوادور": "ecuador",
+        "أوروغواي": "uruguay",
+        "أوروجواي": "uruguay",
+        "إيطاليا": "italy",
+    }
+    
+    eng_a = TRANSLATIONS.get(team_a.strip())
+    eng_b = TRANSLATIONS.get(team_b.strip())
+    
+    if not eng_a or not eng_b:
+        return None
+        
+    try:
+        url = "https://www.scorebat.com/video-api/v3/"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            for item in data.get("response", []):
+                title = item.get("title", "").lower()
+                home = item.get("homeTeam", {}).get("name", "").lower()
+                away = item.get("awayTeam", {}).get("name", "").lower()
+                
+                # Check if both teams match
+                match_home = (eng_a in home or eng_a in title)
+                match_away = (eng_b in away or eng_b in title)
+                
+                # Check reverse match just in case
+                match_home_rev = (eng_b in home or eng_b in title)
+                match_away_rev = (eng_a in away or eng_a in title)
+                
+                if (match_home and match_away) or (match_home_rev and match_away_rev):
+                    videos = item.get("videos", [])
+                    if videos:
+                        embed_code = videos[0].get("embed", "")
+                        match_url = re.search(r"src='([^']+)'", embed_code) or re.search(r'src="([^"]+)"', embed_code)
+                        if match_url:
+                            return match_url.group(1)
+    except Exception as e:
+        print(f"[ScoreBat] Error searching highlights: {e}")
+        
+    return None
+
 def update_finished_matches_highlights():
     # Find recently finished matches (status is "انتهت") that do not have a youtube/highlight link in stream_url
     conn = sqlite3.connect(DB_PATH)
@@ -392,7 +495,7 @@ def update_finished_matches_highlights():
         FROM matches 
         WHERE status = 'انتهت' 
           AND (match_date = ? OR match_date IS NULL)
-          AND (stream_url IS NULL OR stream_url NOT LIKE '%youtube%' AND stream_url NOT LIKE '%youtu.be%')
+          AND (stream_url IS NULL OR stream_url NOT LIKE '%scorebat%' AND stream_url NOT LIKE '%youtube%' AND stream_url NOT LIKE '%youtu.be%')
     """, (cairo_today,))
     
     finished_matches = cursor.fetchall()
@@ -406,6 +509,26 @@ def update_finished_matches_highlights():
     website_url = os.getenv("WEBSITE_URL", "https://yalla-shoot-today.vercel.app")
     
     for match_id, team_a, team_b, tournament, stream_url in finished_matches:
+        # First, try to fetch highlights from ScoreBat API (100% stable & official European matches)
+        embed_url = get_scorebat_embed_url(team_a, team_b)
+        
+        if embed_url:
+            print(f"[Highlights] Found official ScoreBat highlights for {team_a} VS {team_b}: {embed_url}")
+            sources = [{
+                "name": "ملخص وأهداف المباراة (سيرفر رسمي)",
+                "type": "iframe",
+                "url": embed_url
+            }]
+            sources_json = json.dumps(sources)
+            cursor.execute("""
+                UPDATE matches 
+                SET stream_type = 'multi', stream_url = ?, updated_at = ? 
+                WHERE id = ?
+            """, (sources_json, datetime.now().isoformat(), match_id))
+            print(f"[Highlights] Successfully updated ScoreBat highlights for {team_a} VS {team_b}")
+            continue
+            
+        # If not found on ScoreBat, fallback to Vercel YouTube highlights search proxy
         import urllib.parse
         
         # Route through Vercel highlights search API
