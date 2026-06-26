@@ -29,7 +29,8 @@ class handler(BaseHTTPRequestHandler):
             return
             
         # Forward request to Telegram API
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        method = payload.pop("method", "sendMessage")
+        url = f"https://api.telegram.org/bot{token}/{method}"
         headers = {'Content-Type': 'application/json'}
         
         try:
