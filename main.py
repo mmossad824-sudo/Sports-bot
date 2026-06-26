@@ -211,6 +211,66 @@ def update_match(match_id: str, data: dict):
     conn.close()
     return {"message": f"Match {match_id} updated successfully"}
 
+@app.get("/api/proxy")
+def proxy_iframe(url: str):
+    from fastapi.responses import HTMLResponse
+    from bs4 import BeautifulSoup
+    import requests
+    import urllib.parse
+    import os
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        'Referer': url
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            return HTMLResponse(
+                content=f"<div style='color: white; text-align: center; padding: 20px; font-family: sans-serif;'><h3>خطأ في تحميل سيرفر البث (كود: {response.status_code})</h3></div>", 
+                status_code=response.status_code
+            )
+            
+        # Parse HTML and inject <base href="...">
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        parsed = urllib.parse.urlparse(url)
+        base_dir = os.path.dirname(parsed.path)
+        base_url = f"{parsed.scheme}://{parsed.netloc}{base_dir}"
+        if not base_url.endswith('/'):
+            base_url += '/'
+            
+        base_tag = soup.find('base')
+        if base_tag:
+            base_tag['href'] = base_url
+        else:
+            head = soup.find('head')
+            if not head:
+                head = soup.new_tag('head')
+                if soup.html:
+                    soup.html.insert(0, head)
+                else:
+                    soup.insert(0, head)
+            new_base = soup.new_tag('base', href=base_url)
+            head.insert(0, new_base)
+            
+        # Send headers to allow embedding and CORS
+        headers_to_send = {
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "Content-Type": "text/html; charset=utf-8"
+        }
+        
+        return HTMLResponse(content=str(soup), headers=headers_to_send)
+        
+    except Exception as e:
+        return HTMLResponse(
+            content=f"<div style='color: white; text-align: center; padding: 20px; font-family: sans-serif;'><h3>حدث خطأ أثناء الاتصال بسيرفر البث الوسيط: {str(e)}</h3></div>", 
+            status_code=500
+        )
+
+
 if __name__ == "__main__":
     import uvicorn
     # Read port from environment (Hugging Face default is 7860)

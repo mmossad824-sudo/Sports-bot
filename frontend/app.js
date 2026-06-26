@@ -645,7 +645,11 @@ function playSource(source, index) {
     } else if (source.type === 'iframe') {
         videoPlayerDiv.classList.add('hidden');
         iframeContainer.classList.remove('hidden');
-        iframe.src = source.url;
+        if (source.url.includes('youtube.com') || source.url.includes('youtu.be')) {
+            iframe.src = source.url;
+        } else {
+            iframe.src = `${API_BASE_URL}/api/proxy?url=${encodeURIComponent(source.url)}`;
+        }
     }
 }
 
