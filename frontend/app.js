@@ -601,6 +601,14 @@ function playSource(source, index) {
     const extContainer = document.getElementById('external-stream-container');
     if (extLink && extContainer) {
         extLink.href = source.url;
+        
+        // Dynamically set rel="noreferrer" based on source type to avoid blocking YouTube
+        if (source.url.includes('youtube.com') || source.url.includes('youtu.be')) {
+            extLink.removeAttribute('rel');
+        } else {
+            extLink.setAttribute('rel', 'noreferrer');
+        }
+        
         extContainer.classList.remove('hidden');
     }
     
@@ -646,8 +654,10 @@ function playSource(source, index) {
         videoPlayerDiv.classList.add('hidden');
         iframeContainer.classList.remove('hidden');
         if (source.url.includes('youtube.com') || source.url.includes('youtu.be')) {
+            iframe.removeAttribute('referrerpolicy');
             iframe.src = source.url;
         } else {
+            iframe.setAttribute('referrerpolicy', 'no-referrer');
             iframe.src = `${API_BASE_URL}/api/proxy?url=${encodeURIComponent(source.url)}`;
         }
     }
