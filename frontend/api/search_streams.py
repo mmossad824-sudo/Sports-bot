@@ -43,36 +43,9 @@ def clean_channel_name(channel):
     return chan
 
 def is_iframe_embeddable(url, headers, depth=0):
-    if depth > 2:
-        return True
-    try:
-        r = requests.get(url, headers=headers, timeout=3)
-        csp = r.headers.get('content-security-policy', '').lower()
-        xfo = r.headers.get('x-frame-options', '').lower()
-        
-        if 'deny' in xfo or 'sameorigin' in xfo:
-            return False
-            
-        if 'frame-ancestors' in csp:
-            if '*' not in csp and 'yalla-shoot-today' not in csp:
-                return False
-                
-        soup = BeautifulSoup(r.content, 'html.parser')
-        iframes = soup.find_all('iframe')
-        for iframe in iframes:
-            src = iframe.get('src')
-            if src:
-                src = src.strip()
-                if src.startswith('//'):
-                    src = f"https:{src}"
-                if not src.startswith('http'):
-                    continue
-                if not is_iframe_embeddable(src, headers, depth + 1):
-                    return False
-        return True
-    except Exception as e:
-        print(f"[Embed Check] Error checking {url}: {e}")
-        return False
+    # Always return True to avoid false negatives. Streaming sites block datacenter IPs (like Vercel)
+    # with Cloudflare (403/503), but load perfectly in the user's browser.
+    return True
 
 def fetch_url(url, headers):
     try:
@@ -88,7 +61,8 @@ def search_stream_embed(team_a, team_b, channel=""):
     seen_urls = set()
     
     headers = {
-        'User-Agent': 'Mozilla/5.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        'Accept-Language': 'ar,en-US;q=0.7,en;q=0.3'
     }
     
     # 1. Direct Scraping of yallasootlive.com (Primary & Most Stable)
@@ -161,8 +135,9 @@ def search_stream_embed(team_a, team_b, channel=""):
         
         queries = [
             f"{team_a} ضد {team_b} بث مباشر يلا شوت الاسطورة كورة لايف",
-            f"yalla shoot {norm_a} vs {norm_b} streamonsport rojadirecta",
-            f"{team_a} ضد {team_b} كورة سيتي ماي كورة"
+            f"yalla shoot {norm_a} vs {norm_b} streamonsport daddylive livehd7",
+            f"{team_a} vs {team_b} live stream totalsportek buffstreams",
+            f"{team_a} ضد {team_b} كورة فور لايف في العارضة كورة سيتي"
         ]
         
         # Append channel queries if channel is available

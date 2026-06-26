@@ -322,7 +322,7 @@ def update_live_streams():
     cairo_today = cairo_now.strftime("%Y-%m-%d")
     
     cursor.execute("""
-        SELECT id, teamA, teamB, stream_url, channel, status, time 
+        SELECT id, teamA, teamB, stream_type, stream_url, channel, status, time 
         FROM matches 
         WHERE (status = 'جارية الآن' OR status = 'لم تبدأ' OR status LIKE '%الشوط%' OR status LIKE '%بين%') 
           AND (match_date = ? OR match_date IS NULL)
@@ -337,7 +337,7 @@ def update_live_streams():
     print(f"Checking stream links for {len(active_matches)} active/upcoming matches...")
     
     updated_count = 0
-    for match_id, team_a, team_b, current_url, channel, status, time_str in active_matches:
+    for match_id, team_a, team_b, current_type, current_url, channel, status, time_str in active_matches:
         # Determine if we should search for streams now (if live or starting in < 30 minutes)
         should_update = False
         if status == 'جارية الآن' or 'الشوط' in status or 'بين' in status:
@@ -363,16 +363,50 @@ def update_live_streams():
             
         print(f"Updating stream links for {team_a} VS {team_b}...")
         stype, surl = search_stream_embed(team_a, team_b, channel)
+        
+        # Parse existing sources
+        existing_sources = []
+        if current_url:
+            if current_url.startswith('['):
+                try:
+                    existing_sources = json.loads(current_url)
+                except Exception:
+                    pass
+            else:
+                existing_sources = [{"name": "البث الرئيسي", "type": current_type or "hls", "url": current_url}]
+                
         if surl:
-            print(f"Found live stream(s) for {team_a} VS {team_b}: {surl}")
-            cursor.execute("""
-                UPDATE matches 
-                SET stream_type = ?, stream_url = ?, updated_at = ?
-                WHERE id = ?
-            """, (stype, surl, datetime.now().isoformat(), match_id))
-            updated_count += 1
+            new_sources = []
+            if stype == 'multi':
+                try:
+                    new_sources = json.loads(surl)
+                except Exception:
+                    pass
+            else:
+                new_sources = [{"name": "سيرفر بث", "type": stype, "url": surl}]
+                
+            # Merge sources (avoiding duplicates)
+            merged = list(existing_sources)
+            existing_urls = {s["url"] for s in existing_sources}
+            
+            for ns in new_sources:
+                if ns["url"] not in existing_urls:
+                    ns["name"] = f"سيرفر إضافي {len(merged) + 1}"
+                    merged.append(ns)
+                    
+            if merged:
+                final_url = json.dumps(merged)
+                final_type = "multi"
+                
+                print(f"Found live stream(s) for {team_a} VS {team_b}. Total sources merged: {len(merged)}")
+                cursor.execute("""
+                    UPDATE matches 
+                    SET stream_type = ?, stream_url = ?, updated_at = ?
+                    WHERE id = ?
+                """, (final_type, final_url, datetime.now().isoformat(), match_id))
+                updated_count += 1
         else:
-            print(f"Could not find stream for {team_a} VS {team_b}")
+            print(f"Could not find new streams for {team_a} VS {team_b}. Preserving existing streams.")
                 
     conn.commit()
     conn.close()
