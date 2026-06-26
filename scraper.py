@@ -378,7 +378,79 @@ def update_live_streams():
     conn.close()
     print(f"Stream links update finished. Updated {updated_count} matches.")
 
+def update_finished_matches_highlights():
+    # Find recently finished matches (status is "انتهت") that do not have a youtube/highlight link in stream_url
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    from datetime import timedelta
+    cairo_now = datetime.utcnow() + timedelta(hours=3)
+    cairo_today = cairo_now.strftime("%Y-%m-%d")
+    
+    cursor.execute("""
+        SELECT id, teamA, teamB, tournament, stream_url 
+        FROM matches 
+        WHERE status = 'انتهت' 
+          AND (match_date = ? OR match_date IS NULL)
+          AND (stream_url IS NULL OR stream_url NOT LIKE '%youtube%' AND stream_url NOT LIKE '%youtu.be%')
+    """, (cairo_today,))
+    
+    finished_matches = cursor.fetchall()
+    if not finished_matches:
+        conn.close()
+        return
+        
+    print(f"[Highlights] Found {len(finished_matches)} finished matches needing highlights.")
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        'Accept-Language': 'ar,en-US;q=0.7,en;q=0.3'
+    }
+    
+    for match_id, team_a, team_b, tournament, stream_url in finished_matches:
+        # Search YouTube directly for highlights
+        query = f"{team_a} ضد {team_b} ملخص اهداف {tournament}"
+        url = f"https://www.youtube.com/results?search_query={requests.utils.quote(query)}"
+        
+        try:
+            print(f"[Highlights] Searching YouTube highlights for {team_a} VS {team_b}...")
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                # Find all "/watch?v=xxxx" video IDs
+                video_ids = re.findall(r'\"/watch\?v=([a-zA-Z0-9_-]{11})\"', r.text)
+                if video_ids:
+                    # Remove duplicates while keeping order
+                    seen = set()
+                    unique_ids = [x for x in video_ids if not (x in seen or seen.add(x))]
+                    
+                    # Get the top search result
+                    video_id = unique_ids[0]
+                    embed_url = f"https://www.youtube.com/embed/{video_id}"
+                    print(f"[Highlights] Found YouTube video ID: {video_id} -> {embed_url}")
+                    
+                    sources = [{
+                        "name": "ملخص وأهداف المباراة",
+                        "type": "iframe",
+                        "url": embed_url
+                    }]
+                    sources_json = json.dumps(sources)
+                    
+                    cursor.execute("""
+                        UPDATE matches 
+                        SET stream_type = 'multi', stream_url = ?, updated_at = ? 
+                        WHERE id = ?
+                    """, (sources_json, datetime.now().isoformat(), match_id))
+                    print(f"[Highlights] Successfully updated highlights for {team_a} VS {team_b}")
+                else:
+                    print(f"[Highlights] No YouTube videos found in search results for {team_a} VS {team_b}")
+        except Exception as e:
+            print(f"[Highlights] Error searching highlights for {team_a} VS {team_b}: {e}")
+            
+    conn.commit()
+    conn.close()
+
 if __name__ == "__main__":
     init_db()
     scrape_yallakora()
     update_live_streams()
+    update_finished_matches_highlights()

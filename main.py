@@ -49,20 +49,25 @@ def job_morning_scrape():
         print(f"Error broadcasting schedule: {e}")
 
 def job_stream_update():
-    print(f"[{datetime.now().isoformat()}] Starting scheduled scraping and stream link update...")
+    print(f"[{datetime.now().isoformat()}] Starting scheduled scraping, stream link update, and highlights update...")
     try:
         from datetime import timedelta
         cairo_now = datetime.utcnow() + timedelta(hours=3)
-        for offset in [0, 1]:
-            d = cairo_now + timedelta(days=offset)
-            date_str = f"{d.month}/{d.day}/{d.year}"
-            scrape_yallakora(date_str)
+        # Scrape only today's schedule during fast intervals to save resources
+        d = cairo_now
+        date_str = f"{d.month}/{d.day}/{d.year}"
+        scrape_yallakora(date_str)
     except Exception as e:
         print(f"Error scraping Yallakora during stream update: {e}")
     try:
         update_live_streams()
     except Exception as e:
         print(f"Error updating stream links: {e}")
+    try:
+        from scraper import update_finished_matches_highlights
+        update_finished_matches_highlights()
+    except Exception as e:
+        print(f"Error updating finished match highlights: {e}")
     try:
         check_and_send_alerts()
     except Exception as e:
@@ -87,6 +92,11 @@ def startup_event():
     print("Running startup scraping tasks...")
     scrape_three_days()
     update_live_streams()
+    try:
+        from scraper import update_finished_matches_highlights
+        update_finished_matches_highlights()
+    except Exception as e:
+        print(f"Error updating finished match highlights on startup: {e}")
     
     # Run initial Telegram alerts check
     try:
@@ -105,8 +115,8 @@ def startup_event():
     scheduler.add_job(job_morning_scrape, 'cron', hour=5, minute=0)
     # Schedule Noon Broadcast: Every day at 12:00 PM (noon) Cairo time
     scheduler.add_job(broadcast_schedule, 'cron', hour=12, minute=0)
-    # Schedule Stream Link Updater: Every 3 minutes
-    scheduler.add_job(job_stream_update, 'interval', minutes=3)
+    # Schedule Stream Link Updater: Every 1 minute
+    scheduler.add_job(job_stream_update, 'interval', minutes=1)
     
     scheduler.start()
     print("Scheduler started successfully.")
