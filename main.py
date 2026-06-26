@@ -5,7 +5,8 @@ import sqlite3
 import os
 from datetime import datetime
 from scraper import scrape_yallakora, update_live_streams, init_db, DB_PATH
-from bot import broadcast_schedule
+from bot import broadcast_schedule, check_and_send_alerts
+from zoneinfo import ZoneInfo
 
 app = FastAPI(title="Sports Bot API", description="Automated Sports scraping and streaming backend")
 
@@ -18,7 +19,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-scheduler = BackgroundScheduler()
+try:
+    cairo_tz = ZoneInfo("Africa/Cairo")
+    scheduler = BackgroundScheduler(timezone=cairo_tz)
+    print("Scheduler initialized with Africa/Cairo timezone.")
+except Exception as e:
+    scheduler = BackgroundScheduler()
+    print(f"Scheduler initialized with default timezone. Error: {e}")
 
 def scrape_three_days():
     from datetime import timedelta
@@ -56,6 +63,10 @@ def job_stream_update():
         update_live_streams()
     except Exception as e:
         print(f"Error updating stream links: {e}")
+    try:
+        check_and_send_alerts()
+    except Exception as e:
+        print(f"Error checking and sending Telegram alerts: {e}")
 
 @app.on_event("startup")
 def startup_event():
@@ -77,6 +88,12 @@ def startup_event():
     scrape_three_days()
     update_live_streams()
     
+    # Run initial Telegram alerts check
+    try:
+        check_and_send_alerts()
+    except Exception as e:
+        print(f"Error checking Telegram alerts on startup: {e}")
+        
     # Broadcast to Telegram on startup for testing/initialization
     try:
         print("Sending initial Telegram schedule broadcast...")
@@ -84,8 +101,10 @@ def startup_event():
     except Exception as e:
         print(f"Error broadcasting on startup: {e}")
     
-    # Schedule Morning Scrape: Every day at 05:00 AM
+    # Schedule Morning Scrape: Every day at 05:00 AM Cairo time
     scheduler.add_job(job_morning_scrape, 'cron', hour=5, minute=0)
+    # Schedule Noon Broadcast: Every day at 12:00 PM (noon) Cairo time
+    scheduler.add_job(broadcast_schedule, 'cron', hour=12, minute=0)
     # Schedule Stream Link Updater: Every 3 minutes
     scheduler.add_job(job_stream_update, 'interval', minutes=3)
     

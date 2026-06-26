@@ -4,6 +4,31 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
     ? 'http://127.0.0.1:7860'
     : window.location.origin; 
 
+// Monetization Configuration
+const ADS_CONFIG = {
+    // Adsterra Social Bar Ad Script URL (from your Adsterra dashboard)
+    socialBarScript: 'https://pl29899837.effectivecpmnetwork.com/e4/48/0b/e4480b4a0a4ef0a7e842009f7c505039.js',
+    
+    // Adsterra Native Banner configurations (under video player)
+    bannerAd: {
+        containerId: 'container-3de130477da3485fd755fef311849b77',
+        scriptHash: '3de130477da3485fd755fef311849b77',
+        // Adsterra domain for invocation
+        domain: 'pl29899836.effectivecpmnetwork.com',
+        // Auto-refresh interval in milliseconds (3 minutes = 180000ms, 5 minutes = 300000ms)
+        refreshIntervalMs: 180000
+    },
+    
+    // Popunder Ad configuration (Direct Link option from Adsterra / Monetag / PropellerAds)
+    // Put your actual Direct Link URL here. Users clicking anywhere on the page will trigger it.
+    popunder: {
+        enabled: true,
+        directLinkUrl: 'https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039', // replace with your actual Direct Link
+        // Cooling down period: once clicked, don't trigger another popunder for 5 minutes (300000ms)
+        cooldownMs: 300000 
+    }
+}; 
+
 let clapprPlayer = null;
 let activeMatchId = null;
 let currentSources = [];
@@ -107,6 +132,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Setup Ad Banner Auto-Refresh
     startAdRefreshTimer();
+    
+    // Initialize Popunder Ads
+    initPopunderAd();
+    
+    // Load Social Bar Ad dynamically
+    loadSocialBar();
     
     // Close Player Event
     document.getElementById('close-player').addEventListener('click', closePlayer);
@@ -216,6 +247,7 @@ function renderMatchCard(match) {
     let statusClass = 'upcoming';
     let statusText = match.status;
     let pulseHtml = '';
+    let watchBtnText = 'شاهد الآن';
     
     if (match.status === 'جارية الآن') {
         statusClass = 'live';
@@ -224,6 +256,7 @@ function renderMatchCard(match) {
     } else if (match.status === 'انتهت') {
         statusClass = 'finished';
         statusText = 'انتهت';
+        watchBtnText = 'شاهد الملخص والاهداف الآن';
     }
     
     // Handle logo fallbacks
@@ -258,7 +291,7 @@ function renderMatchCard(match) {
                     <i class="fa-solid fa-tv"></i>
                     <span>${match.channel || 'صوتية/غير معروفة'}</span>
                 </div>
-                <button class="watch-now-btn">شاهد الآن <i class="fa-solid fa-circle-play"></i></button>
+                <button class="watch-now-btn">${watchBtnText} <i class="fa-solid fa-circle-play"></i></button>
             </div>
         </div>
     `;
@@ -691,6 +724,8 @@ function startAdRefreshTimer() {
     const adContainer = document.getElementById('banner-ad-container');
     if (!adContainer) return;
     
+    const banner = ADS_CONFIG.bannerAd;
+    
     function refreshBanner() {
         console.log('[Ad Manager] Refreshing Adsterra Native Banner...');
         adContainer.style.opacity = 0;
@@ -700,7 +735,7 @@ function startAdRefreshTimer() {
             
             // Re-create the container element required by Adsterra
             const containerDiv = document.createElement('div');
-            containerDiv.id = 'container-3de130477da3485fd755fef311849b77';
+            containerDiv.id = banner.containerId;
             adContainer.appendChild(containerDiv);
             
             // Re-create and append the Adsterra script tag
@@ -708,7 +743,7 @@ function startAdRefreshTimer() {
             script.async = true;
             script.setAttribute('data-cfasync', 'false');
             // Cache-busting URL to ensure fresh ad load on each interval
-            script.src = `https://pl29899836.effectivecpmnetwork.com/3de130477da3485fd755fef311849b77/invoke.js?t=${Date.now()}`;
+            script.src = `https://${banner.domain}/${banner.scriptHash}/invoke.js?t=${Date.now()}`;
             
             adContainer.appendChild(script);
             adContainer.style.opacity = 1;
@@ -718,6 +753,46 @@ function startAdRefreshTimer() {
     // Load immediately on page initialization
     refreshBanner();
     
-    // Refresh Ad every 3 minutes (180000 milliseconds)
-    setInterval(refreshBanner, 180000);
+    // Refresh Ad at configured interval
+    setInterval(refreshBanner, banner.refreshIntervalMs);
+}
+
+// Monetization: Popunder Ad Handler
+let lastPopunderTime = 0;
+
+function initPopunderAd() {
+    if (!ADS_CONFIG.popunder.enabled) return;
+    
+    document.addEventListener('click', (e) => {
+        // Exclude clicks on close buttons or if player is explicitly closed
+        if (e.target.closest('#close-player') || e.target.closest('.close-btn')) {
+            return;
+        }
+        
+        const now = Date.now();
+        if (now - lastPopunderTime >= ADS_CONFIG.popunder.cooldownMs) {
+            const url = ADS_CONFIG.popunder.directLinkUrl;
+            if (url && !url.includes('xxxxx') && !url.includes('profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039')) {
+                console.log('[Ad Manager] Triggering Popunder Direct Link...');
+                const adWin = window.open(url, '_blank');
+                if (adWin) {
+                    // Try to focus back to our window
+                    window.focus();
+                    lastPopunderTime = now;
+                }
+            }
+        }
+    });
+}
+
+// Load Social Bar Script dynamically from configuration
+function loadSocialBar() {
+    const url = ADS_CONFIG.socialBarScript;
+    if (url && !url.includes('xxxxx')) {
+        console.log('[Ad Manager] Loading Social Bar Ad script...');
+        const script = document.createElement('script');
+        script.src = url;
+        script.type = 'text/javascript';
+        document.body.appendChild(script);
+    }
 }

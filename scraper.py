@@ -75,13 +75,30 @@ def init_db():
             stream_type TEXT,
             stream_url TEXT,
             match_date TEXT,
-            updated_at TEXT
+            updated_at TEXT,
+            telegram_start_sent INTEGER DEFAULT 0,
+            telegram_half_sent INTEGER DEFAULT 0,
+            telegram_end_sent INTEGER DEFAULT 0,
+            last_telegram_scoreA TEXT,
+            last_telegram_scoreB TEXT
         )
     """)
-    try:
-        cursor.execute("ALTER TABLE matches ADD COLUMN match_date TEXT")
-    except sqlite3.OperationalError:
-        pass
+    
+    # Run migrations for all potentially missing columns
+    columns = [
+        ("match_date", "TEXT"),
+        ("telegram_start_sent", "INTEGER DEFAULT 0"),
+        ("telegram_half_sent", "INTEGER DEFAULT 0"),
+        ("telegram_end_sent", "INTEGER DEFAULT 0"),
+        ("last_telegram_scoreA", "TEXT"),
+        ("last_telegram_scoreB", "TEXT")
+    ]
+    for col_name, col_type in columns:
+        try:
+            cursor.execute(f"ALTER TABLE matches ADD COLUMN {col_name} {col_type}")
+        except sqlite3.OperationalError:
+            pass # Column already exists
+            
     conn.commit()
     conn.close()
 
@@ -94,26 +111,50 @@ def save_matches_to_db(matches, match_date):
         # Create a unique ID using team names and match date
         match_id = f"{m['teamA']}_{m['teamB']}_{match_date}"
         
-        # Check if match already exists to preserve stream links
-        cursor.execute("SELECT stream_type, stream_url FROM matches WHERE id = ?", (match_id,))
+        # Check if match already exists to preserve stream links and alert statuses
+        cursor.execute("""
+            SELECT id, stream_type, stream_url, last_telegram_scoreA, last_telegram_scoreB 
+            FROM matches 
+            WHERE id = ?
+        """, (match_id,))
         existing = cursor.fetchone()
         
-        stream_type = None
-        stream_url = None
         if existing:
-            stream_type = existing[0]
-            stream_url = existing[1]
+            # Match exists, update details but preserve stream_url if not empty
+            stream_type_db = existing[1]
+            stream_url_db = existing[2]
+            last_score_a = existing[3]
+            last_score_b = existing[4]
             
-        cursor.execute("""
-            INSERT OR REPLACE INTO matches 
-            (id, tournament, teamA, teamB, scoreA, scoreB, time, status, channel, round, logoA, logoB, link, stream_type, stream_url, match_date, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            match_id, m['tournament'], m['teamA'], m['teamB'], m['scoreA'], m['scoreB'],
-            m['time'], m['status'], m['channel'], m['round'], m['logoA'], m['logoB'],
-            m['link'], stream_type, stream_url, match_date, now_str
-        ))
-        
+            # If last_telegram_scoreA is not initialized, initialize it with current score
+            if last_score_a is None:
+                cursor.execute("""
+                    UPDATE matches 
+                    SET tournament = ?, scoreA = ?, scoreB = ?, time = ?, status = ?, channel = ?, round = ?, logoA = ?, logoB = ?, link = ?, match_date = ?, updated_at = ?, last_telegram_scoreA = ?, last_telegram_scoreB = ?
+                    WHERE id = ?
+                """, (
+                    m['tournament'], m['scoreA'], m['scoreB'], m['time'], m['status'], m['channel'], m['round'], m['logoA'], m['logoB'], m['link'], match_date, now_str, m['scoreA'], m['scoreB'], match_id
+                ))
+            else:
+                cursor.execute("""
+                    UPDATE matches 
+                    SET tournament = ?, scoreA = ?, scoreB = ?, time = ?, status = ?, channel = ?, round = ?, logoA = ?, logoB = ?, link = ?, match_date = ?, updated_at = ?
+                    WHERE id = ?
+                """, (
+                    m['tournament'], m['scoreA'], m['scoreB'], m['time'], m['status'], m['channel'], m['round'], m['logoA'], m['logoB'], m['link'], match_date, now_str, match_id
+                ))
+        else:
+            # Match doesn't exist, insert new row and initialize last scores to prevent false goal alerts
+            cursor.execute("""
+                INSERT INTO matches 
+                (id, tournament, teamA, teamB, scoreA, scoreB, time, status, channel, round, logoA, logoB, link, stream_type, stream_url, match_date, updated_at, telegram_start_sent, telegram_half_sent, telegram_end_sent, last_telegram_scoreA, last_telegram_scoreB)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?)
+            """, (
+                match_id, m['tournament'], m['teamA'], m['teamB'], m['scoreA'], m['scoreB'],
+                m['time'], m['status'], m['channel'], m['round'], m['logoA'], m['logoB'],
+                m['link'], None, None, match_date, now_str, m['scoreA'], m['scoreB']
+            ))
+            
     conn.commit()
     conn.close()
 
@@ -277,11 +318,13 @@ def update_live_streams():
     # We want to find matches that are currently live ("جارية الآن")
     # or starting soon (e.g. status "لم تبدأ") on TODAY's date (Cairo time)
     from datetime import timedelta
-    cairo_today = (datetime.utcnow() + timedelta(hours=3)).strftime("%Y-%m-%d")
+    cairo_now = datetime.utcnow() + timedelta(hours=3)
+    cairo_today = cairo_now.strftime("%Y-%m-%d")
+    
     cursor.execute("""
-        SELECT id, teamA, teamB, stream_url, channel 
+        SELECT id, teamA, teamB, stream_url, channel, status, time 
         FROM matches 
-        WHERE (status = 'جارية الآن' OR status = 'لم تبدأ') 
+        WHERE (status = 'جارية الآن' OR status = 'لم تبدأ' OR status LIKE '%الشوط%' OR status LIKE '%بين%') 
           AND (match_date = ? OR match_date IS NULL)
     """, (cairo_today,))
     active_matches = cursor.fetchall()
@@ -291,10 +334,34 @@ def update_live_streams():
         conn.close()
         return
         
-    print(f"Updating stream links for {len(active_matches)} active/upcoming matches...")
+    print(f"Checking stream links for {len(active_matches)} active/upcoming matches...")
     
-    for match_id, team_a, team_b, current_url, channel in active_matches:
-        # Always search and update stream links for live/upcoming matches
+    updated_count = 0
+    for match_id, team_a, team_b, current_url, channel, status, time_str in active_matches:
+        # Determine if we should search for streams now (if live or starting in < 30 minutes)
+        should_update = False
+        if status == 'جارية الآن' or 'الشوط' in status or 'بين' in status:
+            should_update = True
+        elif status == 'لم تبدأ' and time_str and ':' in time_str:
+            try:
+                match_hour, match_min = map(int, time_str.split(':'))
+                match_dt = cairo_now.replace(hour=match_hour, minute=match_min, second=0, microsecond=0)
+                diff = (match_dt - cairo_now).total_seconds()
+                # If match starts in <= 30 minutes (1800 seconds) and we haven't reached more than 2 hours past scheduled start
+                if -7200 <= diff <= 1800:
+                    should_update = True
+            except Exception as ex:
+                print(f"Error parsing time for match {team_a} VS {team_b}: {ex}")
+                should_update = True # fallback to safe update if parse fails
+        else:
+            # Safe default
+            should_update = True
+            
+        if not should_update:
+            print(f"Skipping stream search for {team_a} VS {team_b} (starts at {time_str}) - too early.")
+            continue
+            
+        print(f"Updating stream links for {team_a} VS {team_b}...")
         stype, surl = search_stream_embed(team_a, team_b, channel)
         if surl:
             print(f"Found live stream(s) for {team_a} VS {team_b}: {surl}")
@@ -303,11 +370,13 @@ def update_live_streams():
                 SET stream_type = ?, stream_url = ?, updated_at = ?
                 WHERE id = ?
             """, (stype, surl, datetime.now().isoformat(), match_id))
+            updated_count += 1
         else:
             print(f"Could not find stream for {team_a} VS {team_b}")
                 
     conn.commit()
     conn.close()
+    print(f"Stream links update finished. Updated {updated_count} matches.")
 
 if __name__ == "__main__":
     init_db()

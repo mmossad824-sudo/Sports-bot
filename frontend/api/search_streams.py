@@ -160,15 +160,16 @@ def search_stream_embed(team_a, team_b, channel=""):
         norm_b = re.sub(r'[أإآ]', 'ا', team_b).replace('ة', 'ه')
         
         queries = [
-            f"{team_a} ضد {team_b} بث مباشر يلا شوت",
-            f"yalla shoot {norm_a} vs {norm_b}"
+            f"{team_a} ضد {team_b} بث مباشر يلا شوت الاسطورة كورة لايف",
+            f"yalla shoot {norm_a} vs {norm_b} streamonsport rojadirecta",
+            f"{team_a} ضد {team_b} كورة سيتي ماي كورة"
         ]
         
         # Append channel queries if channel is available
         clean_chan = clean_channel_name(channel)
         if clean_chan:
             print(f"[Search Proxy] Adding channel queries for: {clean_chan}")
-            queries.append(f"بث مباشر قناة {clean_chan} يلا شوت")
+            queries.append(f"بث مباشر قناة {clean_chan} كورة لايف يلا شوت")
             queries.append(f"koora live {clean_chan} live stream")
         
         found_urls = []
