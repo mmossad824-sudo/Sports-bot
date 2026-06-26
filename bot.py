@@ -41,6 +41,67 @@ def get_tournament_emoji(tour_name):
         return "🏆🇸🇦"
     return "🏆"
 
+def get_team_flag(team_name):
+    name = team_name.strip()
+    # National Teams
+    if "المغرب" in name: return "🇲🇦"
+    if "هايت" in name: return "🇭🇹"
+    if "إسكتلندا" in name or "اسكتلندا" in name: return "🏴󠁧󠁢󠁳󠁣󠁴󠁿"
+    if "البرازيل" in name: return "🇧🇷"
+    if "التشيك" in name: return "🇨🇿"
+    if "المكسيك" in name: return "🇲🇽"
+    if "جنوب أفريقيا" in name or "جنوب افريقيا" in name: return "🇿🇦"
+    if "كوريا" in name: return "🇰🇷"
+    if "إكوادور" in name or "اكوادور" in name: return "🇪🇨"
+    if "ألمانيا" in name or "المانيا" in name: return "🇩🇪"
+    if "كوراساو" in name: return "🇨🇼"
+    if "كوت ديفوار" in name or "ساحل العاج" in name: return "🇨🇮"
+    if "اليابان" in name: return "🇯🇵"
+    if "السويد" in name: return "🇸🇪"
+    if "تونس" in name: return "🇹🇳"
+    if "هولندا" in name: return "🇳🇱"
+    if "باراجواي" in name or "باراغواي" in name: return "🇵🇾"
+    if "أستراليا" in name or "استراليا" in name: return "🇦🇺"
+    if "تركيا" in name: return "🇹🇷"
+    if "أمريكا" in name or "الولايات المتحدة" in name: return "🇺🇸"
+    if "السنغال" in name: return "🇸🇳"
+    if "العراق" in name: return "🇮🇶"
+    if "النرويج" in name: return "🇳🇴"
+    if "فرنسا" in name: return "🇫🇷"
+    if "كاب فيردي" in name: return "🇨🇻"
+    if "السعودية" in name: return "🇸🇦"
+    if "أوروجواي" in name or "أوروغواي" in name: return "🇺🇾"
+    if "إسبانيا" in name or "اسبانيا" in name: return "🇪🇸"
+    if "مصر" in name: return "🇪🇬"
+    if "إيران" in name or "ايران" in name: return "🇮🇷"
+    if "نيوزيلندا" in name: return "🇳🇿"
+    if "بلجيكا" in name: return "🇧🇪"
+    if "الأرجنتين" in name or "الارجنتين" in name: return "🇦🇷"
+    if "إنجلترا" in name or "انجلترا" in name: return "🏴"
+    if "البرتغال" in name: return "🇵🇹"
+    if "كرواتيا" in name: return "🇭🇷"
+    if "الجزائر" in name: return "🇩🇿"
+    
+    # Clubs
+    if "ريال مدريد" in name: return "⚪"
+    if "برشلونة" in name: return "🔵🔴"
+    if "ليفربول" in name: return "🔴"
+    if "مانشستر سيتي" in name: return "🩵"
+    if "مانشستر يونايتد" in name: return "🔴"
+    if "أرسنال" in name or "ارسنال" in name: return "🔴⚪"
+    if "تشيلسي" in name: return "🔵"
+    if "بايرن" in name: return "🔴"
+    if "باريس" in name: return "🔵"
+    if "يوفنتوس" in name: return "⚫⚪"
+    if "الهلال" in name: return "🔵"
+    if "النصر" in name: return "🟡"
+    if "الاتحاد" in name: return "🟡⚫"
+    if "الأهلي" in name or "الاهلي" in name: return "🔴"
+    if "الزمالك" in name: return "⚪🔴"
+    if "بيراميدز" in name: return "🔵"
+    
+    return "⚽"
+
 def send_telegram_api(method, payload):
     if not BOT_TOKEN or not CHANNEL_ID:
         print("Telegram BOT_TOKEN or CHANNEL_ID not configured.")
@@ -156,7 +217,7 @@ def format_daily_schedule():
         for team_a, team_b, time_str, status, channel in matches:
             channel_info = f" | 📺 {channel}" if channel else ""
             status_info = f" ({status})" if status != "لم تبدأ" else ""
-            msg += f"  🔹 {team_a} 🆚 {team_b}\n  ⏰ {time_str}{channel_info}{status_info}\n\n"
+            msg += f"  🔹 {get_team_flag(team_a)} {team_a} 🆚 {get_team_flag(team_b)} {team_b}\n  ⏰ {time_str}{channel_info}{status_info}\n\n"
             
     msg += f"🔗 تابع المباريات مباشرة على موقعنا:\n{WEBSITE_URL}"
     return msg
@@ -248,7 +309,7 @@ def check_and_send_alerts():
             text = (
                 f"🚨 <b>مباراة مرتقبة تبدأ قريباً!</b>\n\n"
                 f"{tour_emoji} <b>{tournament}</b>\n"
-                f"⚔️ <b>{team_a} 🆚 {team_b}</b>\n\n"
+                f"⚔️ <b>{get_team_flag(team_a)} {team_a} 🆚 {get_team_flag(team_b)} {team_b}</b>\n\n"
                 f"⏰ التوقيت: {time_str} (بتوقيت مصر)\n"
                 f"📺 البث المباشر متوفر الآن بجودة عالية وبدون تقطيع!\n"
                 f"اضغط على زر المشاهدة أدناه للمتابعة مباشرة 👇"
@@ -290,7 +351,7 @@ def check_and_send_alerts():
                     text = (
                         f"⚽️ <b>جووووول! هدف جديد في المباراة!</b>\n\n"
                         f"{tour_emoji} <b>{tournament}</b>\n"
-                        f"⚔️ <b>{team_a} {score_a} - {score_b} {team_b}</b>\n\n"
+                        f"⚔️ <b>{get_team_flag(team_a)} {team_a} {score_a} - {score_b} {team_b} {get_team_flag(team_b)}</b>\n\n"
                         f"📺 تابع الهدف ومجريات البث المباشر مباشرة 👇"
                     )
                     reply_markup = {
@@ -317,7 +378,7 @@ def check_and_send_alerts():
             text = (
                 f"⏸️ <b>نهاية الشوط الأول (الاستراحة)</b>\n\n"
                 f"{tour_emoji} <b>{tournament}</b>\n"
-                f"⚔️ <b>{team_a} {score_a} 🆚 {score_b} {team_b}</b>\n\n"
+                f"⚔️ <b>{get_team_flag(team_a)} {team_a} {score_a} 🆚 {score_b} {team_b} {get_team_flag(team_b)}</b>\n\n"
                 f"📺 لمتابعة الشوط الثاني ومجريات البث المباشر 👇"
             )
             reply_markup = {
@@ -339,7 +400,7 @@ def check_and_send_alerts():
             text = (
                 f"🏁 <b>نهاية المباراة! النتيجة النهائية</b>\n\n"
                 f"{tour_emoji} <b>{tournament}</b>\n"
-                f"⚔️ <b>{team_a} {score_a} 🆚 {score_b} {team_b}</b>\n\n"
+                f"⚔️ <b>{get_team_flag(team_a)} {team_a} {score_a} 🆚 {score_b} {team_b} {get_team_flag(team_b)}</b>\n\n"
                 f"🎬 شاهد أهداف وملخص المباراة الآن على موقعنا 👇"
             )
             reply_markup = {
