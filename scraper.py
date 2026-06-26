@@ -402,32 +402,23 @@ def update_finished_matches_highlights():
         
     print(f"[Highlights] Found {len(finished_matches)} finished matches needing highlights.")
     
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-        'Accept-Language': 'ar,en-US;q=0.7,en;q=0.3'
-    }
+    # We call our Vercel highlights search proxy to bypass the Hugging Face Space outbound blocks
+    website_url = os.getenv("WEBSITE_URL", "https://yalla-shoot-today.vercel.app")
     
     for match_id, team_a, team_b, tournament, stream_url in finished_matches:
-        # Search YouTube directly for highlights
-        query = f"{team_a} ضد {team_b} ملخص اهداف {tournament}"
-        url = f"https://www.youtube.com/results?search_query={requests.utils.quote(query)}"
+        import urllib.parse
+        
+        # Route through Vercel highlights search API
+        url = f"{website_url.rstrip('/')}/api/search_highlights?teamA={urllib.parse.quote(team_a)}&teamB={urllib.parse.quote(team_b)}&tournament={urllib.parse.quote(tournament)}"
         
         try:
-            print(f"[Highlights] Searching YouTube highlights for {team_a} VS {team_b}...")
-            r = requests.get(url, headers=headers, timeout=10)
+            print(f"[Highlights] Calling Vercel proxy to fetch highlights for {team_a} VS {team_b}...")
+            r = requests.get(url, timeout=15)
             if r.status_code == 200:
-                # Find all "/watch?v=xxxx" video IDs
-                video_ids = re.findall(r'\"/watch\?v=([a-zA-Z0-9_-]{11})\"', r.text)
-                if video_ids:
-                    # Remove duplicates while keeping order
-                    seen = set()
-                    unique_ids = [x for x in video_ids if not (x in seen or seen.add(x))]
-                    
-                    # Get the top search result
-                    video_id = unique_ids[0]
-                    embed_url = f"https://www.youtube.com/embed/{video_id}"
-                    print(f"[Highlights] Found YouTube video ID: {video_id} -> {embed_url}")
-                    
+                data = r.json()
+                embed_url = data.get("embed_url")
+                if embed_url:
+                    print(f"[Highlights] Proxy successfully found embed: {embed_url}")
                     sources = [{
                         "name": "ملخص وأهداف المباراة",
                         "type": "iframe",
@@ -442,9 +433,11 @@ def update_finished_matches_highlights():
                     """, (sources_json, datetime.now().isoformat(), match_id))
                     print(f"[Highlights] Successfully updated highlights for {team_a} VS {team_b}")
                 else:
-                    print(f"[Highlights] No YouTube videos found in search results for {team_a} VS {team_b}")
+                    print(f"[Highlights] Proxy returned empty embed URL for {team_a} VS {team_b}")
+            else:
+                print(f"[Highlights] Proxy returned error status {r.status_code} for {team_a} VS {team_b}")
         except Exception as e:
-            print(f"[Highlights] Error searching highlights for {team_a} VS {team_b}: {e}")
+            print(f"[Highlights] Proxy error fetching highlights for {team_a} VS {team_b}: {e}")
             
     conn.commit()
     conn.close()
