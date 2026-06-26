@@ -241,19 +241,24 @@ def proxy_iframe(url: str):
         if not base_url.endswith('/'):
             base_url += '/'
             
+        head = soup.find('head')
+        if not head:
+            head = soup.new_tag('head')
+            if soup.html:
+                soup.html.insert(0, head)
+            else:
+                soup.insert(0, head)
+                
         base_tag = soup.find('base')
         if base_tag:
             base_tag['href'] = base_url
         else:
-            head = soup.find('head')
-            if not head:
-                head = soup.new_tag('head')
-                if soup.html:
-                    soup.html.insert(0, head)
-                else:
-                    soup.insert(0, head)
             new_base = soup.new_tag('base', href=base_url)
             head.insert(0, new_base)
+            
+        # Inject referrer policy to bypass HLS hotlinking check
+        new_meta = soup.new_tag('meta', name='referrer', content='no-referrer')
+        head.insert(0, new_meta)
             
         # Send headers to allow embedding and CORS
         headers_to_send = {

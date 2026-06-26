@@ -600,7 +600,7 @@ function playSource(source, index) {
     const extLink = document.getElementById('external-stream-link');
     const extContainer = document.getElementById('external-stream-container');
     if (extLink && extContainer) {
-        extLink.href = source.url;
+        extLink.href = source.parent_url || source.url;
         extContainer.classList.remove('hidden');
     }
     

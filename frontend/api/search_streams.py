@@ -123,7 +123,8 @@ def search_stream_embed(team_a, team_b, channel=""):
                                                 raw_sources.append({
                                                     "name": "سيرفر كورة لايف الرئيسي (متعدد الجودات)",
                                                     "type": "iframe",
-                                                    "url": src
+                                                    "url": src,
+                                                    "parent_url": href
                                                 })
                                                 # Fetch nested player iframe if available (e.g. depoooo.com)
                                                 try:
@@ -142,7 +143,8 @@ def search_stream_embed(team_a, team_b, channel=""):
                                                                     raw_sources.append({
                                                                         "name": "بث مباشر متعدد الجودات (سيرفر خارجي)",
                                                                         "type": "iframe",
-                                                                        "url": nsrc
+                                                                        "url": nsrc,
+                                                                        "parent_url": href
                                                                     })
                                                 except Exception as ex:
                                                     print(f"[Search Proxy] Error fetching nested iframe: {ex}")
@@ -245,7 +247,8 @@ def search_stream_embed(team_a, team_b, channel=""):
                                 raw_sources.append({
                                     "name": f"سيرفر خارجي {iframe_count} (إطار)",
                                     "type": "iframe",
-                                    "url": src
+                                    "url": src,
+                                    "parent_url": url
                                 })
                                 
                     # Look for direct m3u8 HLS streams (CORS protected, keep as backup)
