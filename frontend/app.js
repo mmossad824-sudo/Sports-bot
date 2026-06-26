@@ -772,7 +772,7 @@ function initPopunderAd() {
         const now = Date.now();
         if (now - lastPopunderTime >= ADS_CONFIG.popunder.cooldownMs) {
             const url = ADS_CONFIG.popunder.directLinkUrl;
-            if (url && !url.includes('xxxxx') && !url.includes('profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039')) {
+            if (url && !url.includes('xxxxx')) {
                 console.log('[Ad Manager] Triggering Popunder Direct Link...');
                 const adWin = window.open(url, '_blank');
                 if (adWin) {
