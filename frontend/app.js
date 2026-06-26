@@ -170,6 +170,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // External Stream Link Event (bypasses popunder cooldown and opens both stream and ad)
+    const extLink = document.getElementById('external-stream-link');
+    if (extLink) {
+        extLink.addEventListener('click', (e) => {
+            // Stop propagation to prevent the global popunder handler from triggering a double ad
+            e.stopPropagation();
+            
+            const adUrl = ADS_CONFIG?.popunder?.directLinkUrl;
+            if (adUrl) {
+                console.log("[Ad Manager] External link clicked. Launching direct link ad...");
+                window.open(adUrl, '_blank');
+                // Reset global popunder cooldown to avoid annoying the user immediately after
+                lastPopunderTime = Date.now();
+            }
+            // The browser's native target="_blank" will open the external match URL in a separate tab.
+        });
+    }
 });
 
 // Fetch Matches from FastAPI Backend
