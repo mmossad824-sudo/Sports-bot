@@ -141,6 +141,29 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Close Player Event
     document.getElementById('close-player').addEventListener('click', closePlayer);
+    
+    // Fullscreen Player Event
+    const fsBtn = document.getElementById('fullscreen-player');
+    if (fsBtn) {
+        fsBtn.addEventListener('click', toggleWrapperFullscreen);
+    }
+    
+    // Overlay Ad Event (Guarantees direct link clicks)
+    const overlayAd = document.getElementById('player-overlay-ad');
+    if (overlayAd) {
+        overlayAd.addEventListener('click', () => {
+            const url = ADS_CONFIG.popunder.directLinkUrl;
+            if (url) {
+                console.log("[Ad Manager] Overlay clicked. Opening direct link...");
+                window.open(url, '_blank');
+            }
+            overlayAd.classList.add('hidden');
+            // Play Clappr player if it was paused
+            if (clapprPlayer && typeof clapprPlayer.play === 'function') {
+                clapprPlayer.play();
+            }
+        });
+    }
 });
 
 // Fetch Matches from FastAPI Backend
@@ -354,6 +377,11 @@ async function openMatchStream(matchId) {
                 placeholder.classList.add('hidden');
                 document.getElementById('player-title').innerText = `ملخص المباراة: ${match.teamA} VS ${match.teamB}`;
                 currentSources = highlights;
+                
+                // Show interactive overlay ad over the video
+                const overlayAd = document.getElementById('player-overlay-ad');
+                if (overlayAd) overlayAd.classList.remove('hidden');
+                
                 setupMultiSources(highlights);
             } else {
                 placeholder.classList.remove('hidden');
@@ -378,6 +406,11 @@ async function openMatchStream(matchId) {
         
         placeholder.classList.add('hidden');
         currentSources = sources;
+        
+        // Show interactive overlay ad over the video
+        const overlayAd = document.getElementById('player-overlay-ad');
+        if (overlayAd) overlayAd.classList.remove('hidden');
+        
         setupMultiSources(sources);
         
         // Start background polling
@@ -701,10 +734,13 @@ function closePlayer() {
     retryCount = 0;
     stopBackgroundPolling();
     
-    // Hide section
+    // Hide section & overlay
     playerSection.classList.add('hidden');
     tabsContainer.classList.add('hidden');
     hidePlayerToast();
+    
+    const overlayAd = document.getElementById('player-overlay-ad');
+    if (overlayAd) overlayAd.classList.add('hidden');
     
     // Stop iframe stream
     iframe.src = '';
@@ -838,3 +874,41 @@ function loadSocialBar() {
         document.body.appendChild(script);
     }
 }
+
+// Toggle custom wrapper fullscreen (including video + ads)
+function toggleWrapperFullscreen() {
+    const wrapper = document.querySelector('.player-wrapper');
+    const fsBtn = document.getElementById('fullscreen-player');
+    
+    if (!document.fullscreenElement) {
+        const req = wrapper.requestFullscreen || wrapper.webkitRequestFullscreen || wrapper.msRequestFullscreen;
+        if (req) {
+            req.call(wrapper).then(() => {
+                if (fsBtn) fsBtn.innerHTML = '<i class="fa-solid fa-compress"></i> إلغاء التكبير';
+            }).catch(err => {
+                console.log("Fullscreen request rejected:", err);
+            });
+        }
+    } else {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+        if (exit) {
+            exit.call(document).then(() => {
+                if (fsBtn) fsBtn.innerHTML = '<i class="fa-solid fa-expand"></i> ملء الشاشة';
+            }).catch(err => {
+                console.log("Exit fullscreen failed:", err);
+            });
+        }
+    }
+}
+
+// Listen for fullscreen change event to update the button interface
+document.addEventListener('fullscreenchange', () => {
+    const fsBtn = document.getElementById('fullscreen-player');
+    if (fsBtn) {
+        if (document.fullscreenElement) {
+            fsBtn.innerHTML = '<i class="fa-solid fa-compress"></i> إلغاء التكبير';
+        } else {
+            fsBtn.innerHTML = '<i class="fa-solid fa-expand"></i> ملء الشاشة';
+        }
+    }
+});

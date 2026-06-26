@@ -74,12 +74,25 @@
             <div class="player-wrapper card">
                 <div class="player-header">
                     <h3 id="player-title">بث مباشر للمباراة</h3>
-                    <button id="close-player" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+                    <div class="player-header-actions" style="display: flex; gap: 10px; align-items: center;">
+                        <button id="fullscreen-player" class="fullscreen-btn" title="ملء الشاشة المطور"><i class="fa-solid fa-expand"></i> ملء الشاشة</button>
+                        <button id="close-player" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
                 </div>
                 <!-- Multi-source selector tabs -->
                 <div id="sources-tabs" class="sources-tabs hidden"></div>
                 
-                <div class="video-container">
+                <div class="video-container" style="position: relative;">
+                    <!-- Interactive Overlay Ad (Guarantees click conversion) -->
+                    <div id="player-overlay-ad" class="player-overlay-ad hidden">
+                        <button id="close-overlay-btn" class="close-overlay-btn"><i class="fa-solid fa-xmark"></i> إغلاق الإعلان ومتابعة البث</button>
+                        <div class="overlay-ad-content">
+                            <i class="fa-solid fa-circle-play overlay-play-icon"></i>
+                            <h4>اضغط لتشغيل البث المباشر بجودة عالية</h4>
+                            <p>البث متوافق مع جميع الأجهزة والسرعات بدون تقطيع</p>
+                        </div>
+                    </div>
+                    
                     <div id="player-toast" class="player-toast hidden">
                         <span id="player-toast-text">جاري الانتقال للسيرفر البديل...</span>
                     </div>
