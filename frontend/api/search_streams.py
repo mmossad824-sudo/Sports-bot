@@ -25,11 +25,34 @@ def match_team(team, text_normalized):
     norm_team = normalize(team)
     if norm_team in text_normalized:
         return True
+        
+    # Try stripping "ال" prefix
+    if norm_team.startswith("ال"):
+        without_al = norm_team[2:]
+        if without_al in text_normalized:
+            return True
+            
+    # Try adding "ال" prefix
+    else:
+        with_al = "ال" + norm_team
+        if with_al in text_normalized:
+            return True
+            
+    # Try matching synonyms with/without "ال"
     for k, v in SYNONYMS.items():
         if k in team:
             norm_syn = normalize(v)
             if norm_syn in text_normalized:
                 return True
+            if norm_syn.startswith("ال"):
+                without_al = norm_syn[2:]
+                if without_al in text_normalized:
+                    return True
+            else:
+                with_al = "ال" + norm_syn
+                if with_al in text_normalized:
+                    return True
+                    
     return False
 
 def clean_channel_name(channel):
@@ -49,7 +72,7 @@ def is_iframe_embeddable(url, headers, depth=0):
 
 def fetch_url(url, headers):
     try:
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
             return url, response.text, response.content
     except Exception as e:
@@ -68,7 +91,7 @@ def search_stream_embed(team_a, team_b, channel=""):
     # 1. Direct Scraping of yallasootlive.com (Primary & Most Stable)
     try:
         print(f"[Search Proxy] Scraping yallasootlive.com directly for {team_a} VS {team_b}...")
-        r = requests.get('https://yallasootlive.com/', headers=headers, timeout=8)
+        r = requests.get('https://yallasootlive.com/', headers=headers, timeout=12)
         if r.status_code == 200:
             soup = BeautifulSoup(r.content, 'html.parser')
             match_cards = soup.find_all(class_='AY_Match')
@@ -85,7 +108,7 @@ def search_stream_embed(team_a, team_b, channel=""):
                             print(f"[Search Proxy] Found matching card on yallasootlive.com: {href}")
                             # Fetch player page
                             try:
-                                pr = requests.get(href, headers=headers, timeout=5)
+                                pr = requests.get(href, headers=headers, timeout=12)
                                 if pr.status_code == 200:
                                     psoup = BeautifulSoup(pr.content, 'html.parser')
                                     iframes = psoup.find_all('iframe')
@@ -104,7 +127,7 @@ def search_stream_embed(team_a, team_b, channel=""):
                                                 })
                                                 # Fetch nested player iframe if available (e.g. depoooo.com)
                                                 try:
-                                                    ar = requests.get(src, headers=headers, timeout=5)
+                                                    ar = requests.get(src, headers=headers, timeout=12)
                                                     if ar.status_code == 200:
                                                         asoup = BeautifulSoup(ar.content, 'html.parser')
                                                         niframes = asoup.find_all('iframe')
