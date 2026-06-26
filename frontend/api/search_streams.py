@@ -164,12 +164,31 @@ def search_stream_embed(team_a, team_b, channel=""):
                             query_params = urllib.parse.parse_qs(parsed.query)
                             actual_url = query_params.get('uddg', [href])[0]
                             
-                            blacklist = ['youtube.com', 'facebook.com', 'twitter.com', 'instagram.com', 'wikipedia.org', 'yallakora.com', 'kooora.com', 'aljazeera.net', 'fifa.com']
+                            blacklist = ['youtube.com', 'facebook.com', 'twitter.com', 'instagram.com', 'wikipedia.org', 'yallakora.com', 'kooora.com', 'aljazeera.net', 'fifa.com', 'pinterest.com', 'linkedin.com']
                             if not any(x in actual_url for x in blacklist):
                                 if actual_url not in found_urls:
                                     found_urls.append(actual_url)
                                     
-        candidate_urls = found_urls[:6]
+        # Sort found URLs by user's requested 50 source domains (priority sites)
+        priority_keywords = [
+            'daddylive', 'cricfree', 'vipleague', 'streamonsport', 'footybite', 
+            'rojadirecta', 'livetv', 'buffstreams', 'crackstreams', 'firstrowsports', 
+            'stream2watch', 'vipbox', 'soccersreams', 'totalsportek', 'hesgoal', 
+            'mamahd', 'sportrar', 'livehd7', 'yalla-shoot', 'yallasoot', 'korastart',
+            'koora-live', 'kooralive', 'koracity', 'yallashoot', 'kora-online', 
+            'mykora', 'koragoal', 'felarda', 'korastar', 'kora4live', 'egybestsport', 
+            'kora-plus', 'hikora', 'shoot-live', 'koraweb', 'as-koora', 'askoora'
+        ]
+        
+        def get_priority(url):
+            u = url.lower()
+            for index, kw in enumerate(priority_keywords):
+                if kw in u:
+                    return index  # higher priority (lower index in list)
+            return 9999
+            
+        found_urls.sort(key=get_priority)
+        candidate_urls = found_urls[:8]
         if candidate_urls:
             hls_count = 0
             iframe_count = 0
