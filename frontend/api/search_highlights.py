@@ -4,165 +4,6 @@ import re
 import urllib.parse
 import json
 
-SYNONYMS = {
-    "كوت ديفوار": "ساحل العاج",
-    "ساحل العاج": "كوت ديفوار",
-    "أمريكا": "الولايات المتحدة",
-    "الولايات المتحدة": "أمريكا",
-}
-
-TRANSLATIONS = {
-    "برشلونة": "barcelona",
-    "ريال مدريد": "real madrid",
-    "أتلتيكو مدريد": "atletico madrid",
-    "أتليتكو مدريد": "atletico madrid",
-    "ليفربول": "liverpool",
-    "مانشستر سيتي": "manchester city",
-    "مانشستر يونايتد": "manchester united",
-    "أرسنال": "arsenal",
-    "ارسنال": "arsenal",
-    "تشيلسي": "chelsea",
-    "توتنهام": "tottenham",
-    "بايرن ميونخ": "bayern",
-    "بايرن": "bayern",
-    "باريس سان جيرمان": "psg",
-    "باريس": "psg",
-    "يوفنتوس": "juventus",
-    "إنتر ميلان": "inter",
-    "انتر ميلان": "inter",
-    "ميلان": "ac milan",
-    "روما": "roma",
-    "نابولي": "napoli",
-    "بروسيا دورتموند": "dortmund",
-    "دورتموند": "dortmund",
-    "أياكس": "ajax",
-    "اياكس": "ajax",
-    "النرويج": "norway",
-    "فرنسا": "france",
-    "اليابان": "japan",
-    "السويد": "sweden",
-    "تونس": "tunisia",
-    "هولندا": "netherlands",
-    "باراجواي": "paraguay",
-    "باراغواي": "paraguay",
-    "أستراليا": "australia",
-    "تركيا": "turkey",
-    "أمريكا": "usa",
-    "السنغال": "senegal",
-    "العراق": "iraq",
-    "بلجيكا": "belgium",
-    "إسبانيا": "spain",
-    "اسبانيا": "spain",
-    "إنجلترا": "england",
-    "انجلترا": "england",
-    "البرتغال": "portugal",
-    "كرواتيا": "croatia",
-    "الأرجنتين": "argentina",
-    "الارجنتين": "argentina",
-    "البرازيل": "brazil",
-    "المغرب": "morocco",
-    "هايتى": "haiti",
-    "هايتي": "haiti",
-    "إسكتلندا": "scotland",
-    "اسكتلندا": "scotland",
-    "التشيك": "czech",
-    "المكسيك": "mexico",
-    "جنوب أفريقيا": "south africa",
-    "جنوب افريقيا": "south africa",
-    "كوريا الجنوبية": "south korea",
-    "إكوادور": "ecuador",
-    "اكوادور": "ecuador",
-    "أوروغواي": "uruguay",
-    "أوروجواي": "uruguay",
-    "إيطاليا": "italy",
-}
-
-def normalize(text):
-    if not text:
-        return ""
-    text = re.sub(r'[أإآ]', 'ا', text)
-    text = re.sub(r'ة', 'ه', text)
-    text = re.sub(r'\s+', '', text)
-    return text.strip().lower()
-
-def match_team(team, text_normalized):
-    norm_team = normalize(team)
-    if norm_team in text_normalized:
-        return True
-        
-    # Try stripping "ال" prefix
-    if norm_team.startswith("ال"):
-        without_al = norm_team[2:]
-        if without_al in text_normalized:
-            return True
-            
-    # Try adding "ال" prefix
-    else:
-        with_al = "ال" + norm_team
-        if with_al in text_normalized:
-            return True
-            
-    # Try matching synonyms with/without "ال"
-    for k, v in SYNONYMS.items():
-        if k in team:
-            norm_syn = normalize(v)
-            if norm_syn in text_normalized:
-                return True
-            if norm_syn.startswith("ال"):
-                without_al = norm_syn[2:]
-                if without_al in text_normalized:
-                    return True
-            else:
-                with_al = "ال" + norm_syn
-                if with_al in text_normalized:
-                    return True
-                    
-    return False
-
-def search_dailymotion(team_a, team_b):
-    try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-        }
-        
-        # 1. Search in Arabic
-        query = f"ملخص مباراة {team_a} و {team_b}"
-        url = f"https://api.dailymotion.com/videos?search={urllib.parse.quote(query)}&fields=id,title,embed_url,duration&limit=10&sort=relevance"
-        r = requests.get(url, headers=headers, timeout=10)
-        if r.status_code == 200:
-            data = r.json()
-            for v in data.get("list", []):
-                title = v.get("title", "")
-                embed_url = v.get("embed_url")
-                duration = v.get("duration", 0)
-                
-                # Highlights should be >= 90 seconds
-                if duration >= 90:
-                    title_norm = normalize(title)
-                    if match_team(team_a, title_norm) and match_team(team_b, title_norm):
-                        return embed_url
-                        
-        # 2. Search in English translation
-        eng_a = TRANSLATIONS.get(team_a.strip())
-        eng_b = TRANSLATIONS.get(team_b.strip())
-        if eng_a and eng_b:
-            query_en = f"{eng_a} vs {eng_b} highlights"
-            url_en = f"https://api.dailymotion.com/videos?search={urllib.parse.quote(query_en)}&fields=id,title,embed_url,duration&limit=10&sort=relevance"
-            r_en = requests.get(url_en, headers=headers, timeout=10)
-            if r_en.status_code == 200:
-                data_en = r_en.json()
-                for v in data_en.get("list", []):
-                    title = v.get("title", "").lower()
-                    duration = v.get("duration", 0)
-                    embed_url = v.get("embed_url")
-                    
-                    if duration >= 90:
-                        if eng_a.lower() in title and eng_b.lower() in title:
-                            return embed_url
-    except Exception as e:
-        print(f"Error searching Dailymotion: {e}")
-    return None
-
 def find_video_renderers(data):
     renderers = []
     if isinstance(data, dict):
@@ -203,20 +44,44 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"error": "Missing teamA or teamB"}).encode('utf-8'))
             return
-
-        # Try Dailymotion first
-        dm_embed = search_dailymotion(team_a, team_b)
-        if dm_embed:
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps({"video_id": dm_embed.split('/')[-1], "embed_url": dm_embed}).encode('utf-8'))
-            return
             
-        # Fallback to YouTube
-        query = f"ملخص مباراة {team_a} ضد {team_b} كامل".strip()
+        # 1. First try Dailymotion (API is free, embed works without restrictions)
+        dm_query = f"{team_a} {team_b} highlights".strip()
+        dm_url = f"https://api.dailymotion.com/videos?search={urllib.parse.quote(dm_query)}&fields=id,title,embed_url,duration&limit=10&sort=relevance"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'Accept-Language': 'ar,en-US;q=0.7,en;q=0.3'
+        }
+        
+        try:
+            r = requests.get(dm_url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                data = r.json()
+                for video in data.get('list', []):
+                    # Basic duration check (e.g. > 1 minute)
+                    duration = video.get('duration', 0)
+                    if duration > 60:
+                        title_lower = video.get('title', '').lower()
+                        # Optional: check if teams are in title, or just trust Dailymotion's relevance
+                        embed_url = video.get('embed_url')
+                        if embed_url:
+                            self.send_response(200)
+                            self.send_header('Content-type', 'application/json')
+                            self.send_header('Access-Control-Allow-Origin', '*')
+                            self.end_headers()
+                            self.wfile.write(json.dumps({
+                                "video_id": video.get('id'), 
+                                "embed_url": embed_url,
+                                "source": "dailymotion"
+                            }).encode('utf-8'))
+                            return
+        except Exception as e:
+            print(f"Dailymotion search error: {e}")
 
+        # 2. Fallback to YouTube if Dailymotion fails
+        # Do not append broadcaster name to prevent official channels that block embedding (Error 150)
+        query = f"ملخص مباراة {team_a} ضد {team_b} كامل".strip()
         url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
         
         headers = {

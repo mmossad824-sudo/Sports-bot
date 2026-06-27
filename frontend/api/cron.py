@@ -2,7 +2,7 @@ from http.server import BaseHTTPRequestHandler
 import os
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 
 # Environment Variables from Vercel (Default values or placeholders if not set)
@@ -11,9 +11,6 @@ CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "@yalla_shoottoday")
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://yalla-shoot-today.vercel.app")
 
 def send_telegram_message(text, reply_markup=None):
-    if not BOT_TOKEN:
-        print("BOT_TOKEN is not configured")
-        return False
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
@@ -67,6 +64,7 @@ def should_include_match(tour_name, team_a, team_b):
     return False
 
 def scrape_and_format():
+    from datetime import timedelta
     cairo_now = datetime.utcnow() + timedelta(hours=3)
     date_str = f"{cairo_now.month}/{cairo_now.day}/{cairo_now.year}"
     url = f"https://www.yallakora.com/match-center/?date={date_str}"

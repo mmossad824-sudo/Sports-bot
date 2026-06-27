@@ -523,96 +523,20 @@ def get_scorebat_embed_url(team_a, team_b):
         
     return None
 
-def upload_highlight_to_telegram(embed_url, team_a, team_b):
-    import yt_dlp
-    import os
-    import tempfile
-    
-    BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "@yalla_shoottoday")
-    
-    if not BOT_TOKEN or not CHANNEL_ID:
-        print("[Telegram Highlights] BOT_TOKEN or CHANNEL_ID not configured.")
-        return None
-        
-    print(f"[Telegram Highlights] Starting yt-dlp download for {embed_url}...")
-    
-    # Generate temp file path
-    temp_dir = tempfile.gettempdir()
-    temp_filepath = os.path.join(temp_dir, f"highlight_{team_a}_{team_b}.mp4")
-    
-    # Select best single MP4 format up to 48MB so it uploads safely to Telegram (Bot API limit is 50MB)
-    ydl_opts = {
-        'format': 'best[ext=mp4]/best',
-        'outtmpl': temp_filepath,
-        'quiet': True,
-        'no_warnings': True,
-        'max_filesize': 48 * 1024 * 1024,
-    }
-    
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([embed_url])
-            
-        if not os.path.exists(temp_filepath):
-            print("[Telegram Highlights] Download failed, file does not exist.")
-            return None
-            
-        file_size = os.path.getsize(temp_filepath)
-        print(f"[Telegram Highlights] Downloaded file size: {file_size / (1024*1024):.2f} MB. Uploading to Telegram...")
-        
-        # Upload to Telegram channel
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendVideo"
-        caption = f"🎬 ملخص وأهداف مباراة {team_a} 🆚 {team_b}\n\n📺 تابع المباريات والملخصات بجودة عالية مباشرة على موقعنا:\n{os.getenv('WEBSITE_URL', 'https://yalla-shoot-today.vercel.app')}"
-        
-        with open(temp_filepath, 'rb') as video_file:
-            files = {'video': video_file}
-            data = {
-                'chat_id': CHANNEL_ID,
-                'caption': caption,
-                'supports_streaming': True
-            }
-            resp = requests.post(url, files=files, data=data, timeout=90)
-            
-        # Clean up temp file
-        try:
-            os.remove(temp_filepath)
-        except Exception:
-            pass
-            
-        if resp.status_code == 200:
-            res_json = resp.json()
-            if res_json.get("ok"):
-                msg_id = res_json.get("result", {}).get("message_id")
-                chan_user = CHANNEL_ID.lstrip('@')
-                telegram_widget_url = f"https://t.me/{chan_user}/{msg_id}"
-                print(f"[Telegram Highlights] Successfully uploaded! Embed URL: {telegram_widget_url}")
-                return telegram_widget_url
-            else:
-                print(f"[Telegram Highlights] Telegram API error: {resp.text}")
-        else:
-            print(f"[Telegram Highlights] Telegram upload failed: {resp.status_code}, response: {resp.text}")
-            
-    except Exception as e:
-        print(f"[Telegram Highlights] Error in download/upload: {e}")
-        try:
-            if os.path.exists(temp_filepath):
-                os.remove(temp_filepath)
-        except Exception:
-            pass
-            
-    return None
-
 def update_finished_matches_highlights():
     # Find recently finished matches (status is "انتهت") that do not have a youtube/highlight link in stream_url
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
+    from datetime import timedelta
+    cairo_now = datetime.utcnow() + timedelta(hours=3)
+    cairo_today = cairo_now.strftime("%Y-%m-%d")
+    
     cursor.execute("""
         SELECT id, teamA, teamB, tournament, stream_url 
         FROM matches 
         WHERE status = 'انتهت' 
-          AND (stream_url IS NULL OR (stream_url NOT LIKE '%scorebat%' AND stream_url NOT LIKE '%youtube%' AND stream_url NOT LIKE '%youtu.be%' AND stream_url NOT LIKE '%telegram%' AND stream_url NOT LIKE '%t.me%'))
+          AND (stream_url IS NULL OR (stream_url NOT LIKE '%scorebat%' AND stream_url NOT LIKE '%youtube%' AND stream_url NOT LIKE '%youtu.be%'))
     """)
     
     finished_matches = cursor.fetchall()
@@ -622,12 +546,18 @@ def update_finished_matches_highlights():
         
     print(f"[Highlights] Found {len(finished_matches)} finished matches needing highlights.")
     
+    # We call our Vercel highlights search proxy to bypass the Hugging Face Space outbound blocks
     website_url = os.getenv("WEBSITE_URL", "https://yalla-shoot-today.vercel.app")
     
     for match_id, team_a, team_b, tournament, stream_url in finished_matches:
+        # ScoreBat bypassed - User requested YouTube highlights only
+        # embed_url = get_scorebat_embed_url(team_a, team_b)
+        embed_url = None
+            
+        # If not found on ScoreBat, fallback to Vercel YouTube highlights search proxy
         import urllib.parse
         
-        # Route through Vercel highlights search API (now prioritizing Dailymotion)
+        # Route through Vercel highlights search API
         url = f"{website_url.rstrip('/')}/api/search_highlights?teamA={urllib.parse.quote(team_a)}&teamB={urllib.parse.quote(team_b)}&tournament={urllib.parse.quote(tournament)}"
         
         try:
@@ -638,32 +568,35 @@ def update_finished_matches_highlights():
                 embed_url = data.get("embed_url")
                 if embed_url:
                     print(f"[Highlights] Proxy successfully found embed: {embed_url}")
-                    
-                    # Try to upload to Telegram as direct video for unblocked experience
-                    telegram_embed = upload_highlight_to_telegram(embed_url, team_a, team_b)
-                    
-                    sources = []
-                    if telegram_embed:
-                        sources.append({
-                            "name": "ملخص وأهداف المباراة (سيرفر تليجرام المباشر) ⚡",
-                            "type": "telegram",
-                            "url": telegram_embed
-                        })
-                    
-                    sources.append({
-                        "name": "ملخص وأهداف المباراة (سيرفر خارجي)",
+                    sources = [{
+                        "name": "ملخص وأهداف المباراة",
                         "type": "iframe",
                         "url": embed_url
-                    })
-                    
+                    }]
                     sources_json = json.dumps(sources)
                     
                     cursor.execute("""
                         UPDATE matches 
-                        SET stream_type = 'multi', stream_url = ?, telegram_embed_url = ?, updated_at = ? 
+                        SET stream_type = 'multi', stream_url = ?, updated_at = ? 
                         WHERE id = ?
-                    """, (sources_json, telegram_embed, datetime.now().isoformat(), match_id))
+                    """, (sources_json, datetime.now().isoformat(), match_id))
                     print(f"[Highlights] Successfully updated highlights for {team_a} VS {team_b}")
+                    
+                    # Spawn a background process to download and upload the video to Telegram
+                    import subprocess
+                    import sys
+                    script_path = os.path.join(os.path.dirname(__file__), "upload_video_to_telegram.py")
+                    # We pass the Dailymotion URL or YouTube URL (Dailymotion is better for yt-dlp downloading as it's not blocked as often)
+                    source_url = None
+                    if "dailymotion" in embed_url:
+                        source_url = f"https://www.dailymotion.com/video/{data.get('video_id')}"
+                    elif "youtube" in embed_url:
+                        source_url = f"https://www.youtube.com/watch?v={data.get('video_id')}"
+                        
+                    if source_url:
+                        print(f"[Highlights] Spawning background Telegram upload task for {team_a} VS {team_b}...")
+                        subprocess.Popen([sys.executable, script_path, match_id, team_a, team_b, source_url])
+                    
                 else:
                     print(f"[Highlights] Proxy returned empty embed URL for {team_a} VS {team_b}")
             else:

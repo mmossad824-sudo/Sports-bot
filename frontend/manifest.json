@@ -1,12 +1,11 @@
 {
-  "name": "يلا شوت توداي - بث مباشر وملخصات",
-  "short_name": "يلا شوت",
-  "description": "موقع دليل رياضي لعرض جدول مباريات اليوم بث مباشر وأهداف وملخصات بجودة عالية وبدون تقطيع",
+  "name": "YallaShoot Today",
+  "short_name": "YallaShoot",
+  "description": "جدول مباريات اليوم والبث المباشر للبطولات العالمية والعربية.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#e11d48",
-  "orientation": "any",
   "icons": [
     {
       "src": "https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png",
