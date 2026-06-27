@@ -156,20 +156,29 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Overlay Ad Event (Guarantees direct link clicks)
     const overlayAd = document.getElementById('player-overlay-ad');
+    const closeOverlayBtn = document.getElementById('close-overlay-btn');
+    
+    if (closeOverlayBtn) {
+        closeOverlayBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Don't trigger the overlay ad click
+            overlayAd.classList.add('hidden');
+            const videoEl = document.getElementById('native-video-player');
+            if (videoEl) videoEl.play().catch(() => {});
+        });
+    }
+    
     if (overlayAd) {
-        overlayAd.addEventListener('click', () => {
+        overlayAd.addEventListener('click', (e) => {
+            // Don't trigger if close button was clicked
+            if (e.target.closest('#close-overlay-btn')) return;
             const url = ADS_CONFIG.popunder.directLinkUrl;
             if (url) {
                 console.log("[Ad Manager] Overlay clicked. Opening direct link...");
                 window.open(url, '_blank');
             }
             overlayAd.classList.add('hidden');
-            if (hlsPlayer && typeof hlsPlayer.play === 'function') {
-                hlsPlayer.play();
-            } else {
-                const videoEl = document.getElementById('native-video-player');
-                if (videoEl) videoEl.play();
-            }
+            const videoEl = document.getElementById('native-video-player');
+            if (videoEl) videoEl.play().catch(() => {});
         });
     }
 
@@ -659,32 +668,35 @@ function playSource(source, index) {
         
         const videoEl = document.createElement('video');
         videoEl.id = 'native-video-player';
-        videoEl.style.width = '100%';
-        videoEl.style.height = '100%';
+        videoEl.style.cssText = 'width:100%;height:100%;min-height:200px;background:#000;display:block;';
         videoEl.controls = true;
         videoEl.autoplay = true;
+        videoEl.playsInline = true;
         videoPlayerDiv.appendChild(videoEl);
         
         if (Hls.isSupported()) {
             hlsPlayer = new Hls({
                 maxBufferLength: 30,
                 maxMaxBufferLength: 600,
+                enableWorker: true,
+                lowLatencyMode: true,
+                backBufferLength: 60,
             });
             hlsPlayer.loadSource(source.url);
             hlsPlayer.attachMedia(videoEl);
+            hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+                videoEl.play().catch(() => {});
+            });
             hlsPlayer.on(Hls.Events.ERROR, function (event, data) {
                 if (data.fatal) {
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
-                            console.warn("fatal network error encountered, try to recover");
                             hlsPlayer.startLoad();
                             break;
                         case Hls.ErrorTypes.MEDIA_ERROR:
-                            console.warn("fatal media error encountered, try to recover");
                             hlsPlayer.recoverMediaError();
                             break;
                         default:
-                            console.error('Fatal HLS Error:', data);
                             hlsPlayer.destroy();
                             handlePlayerError(source, index);
                             break;
@@ -692,25 +704,25 @@ function playSource(source, index) {
                 }
             });
         } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-            // Fallback for Safari natively supporting HLS
             videoEl.src = source.url;
             videoEl.addEventListener('error', function() {
                 handlePlayerError(source, index);
             });
+            videoEl.play().catch(() => {});
+        } else {
+            handlePlayerError(source, index);
         }
         
     } else if (source.type === 'iframe' || source.type === 'telegram') {
         videoPlayerDiv.classList.add('hidden');
         iframeContainer.classList.remove('hidden');
-        if (source.url.includes('youtube.com') || source.url.includes('youtu.be') || source.url.includes('dailymotion.com') || source.url.includes('t.me')) {
-            iframe.removeAttribute('referrerpolicy');
-            iframe.removeAttribute('sandbox');
-            iframe.src = source.url;
-        } else {
-            iframe.setAttribute('referrerpolicy', 'no-referrer');
-            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation allow-popups allow-popups-to-escape-sandbox');
-            iframe.src = `${API_BASE_URL}/api/proxy?url=${encodeURIComponent(source.url)}`;
-        }
+        
+        // Load ALL iframe sources directly in the browser (not through proxy)
+        // The proxy uses Vercel datacenter IPs which are blocked by stream providers
+        // Users' browsers can access these streams directly
+        iframe.removeAttribute('referrerpolicy');
+        iframe.removeAttribute('sandbox');
+        iframe.src = source.url;
     }
 }
 
