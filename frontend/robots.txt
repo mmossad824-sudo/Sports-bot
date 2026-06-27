@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://yalla-shoot-today.vercel.app/sitemap.xml

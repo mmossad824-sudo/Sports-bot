@@ -341,10 +341,10 @@ def check_and_send_alerts():
         is_live = (status == 'جارية الآن' or 'الشوط' in status)
         if is_live and last_score_a is not None and last_score_b is not None:
             try:
-                curr_a = int(score_a) if score_a.isdigit() else 0
-                curr_b = int(score_b) if score_b.isdigit() else 0
-                prev_a = int(last_score_a) if str(last_score_a).isdigit() else 0
-                prev_b = int(last_score_b) if str(last_score_b).isdigit() else 0
+                curr_a = int(score_a) if (score_a and str(score_a).isdigit()) else 0
+                curr_b = int(score_b) if (score_b and str(score_b).isdigit()) else 0
+                prev_a = int(last_score_a) if (last_score_a and str(last_score_a).isdigit()) else 0
+                prev_b = int(last_score_b) if (last_score_b and str(last_score_b).isdigit()) else 0
                 
                 if curr_a > prev_a or curr_b > prev_b:
                     scorer_team = team_a if curr_a > prev_a else team_b

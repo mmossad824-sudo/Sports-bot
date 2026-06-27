@@ -2,15 +2,18 @@ from http.server import BaseHTTPRequestHandler
 import os
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 # Environment Variables from Vercel (Default values or placeholders if not set)
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8979671229:AAGyVHMlWDuHi7OcQRp13wqTvz2jEBfRa2M")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "@yalla_shoottoday")
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://yalla-shoot-today.vercel.app")
 
 def send_telegram_message(text, reply_markup=None):
+    if not BOT_TOKEN:
+        print("BOT_TOKEN is not configured")
+        return False
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
@@ -64,8 +67,8 @@ def should_include_match(tour_name, team_a, team_b):
     return False
 
 def scrape_and_format():
-    now = datetime.now()
-    date_str = f"{now.month}/{now.day}/{now.year}"
+    cairo_now = datetime.utcnow() + timedelta(hours=3)
+    date_str = f"{cairo_now.month}/{cairo_now.day}/{cairo_now.year}"
     url = f"https://www.yallakora.com/match-center/?date={date_str}"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'

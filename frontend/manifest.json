@@ -1,0 +1,22 @@
+{
+  "name": "يلا شوت توداي - بث مباشر وملخصات",
+  "short_name": "يلا شوت",
+  "description": "موقع دليل رياضي لعرض جدول مباريات اليوم بث مباشر وأهداف وملخصات بجودة عالية وبدون تقطيع",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#e11d48",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

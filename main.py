@@ -7,8 +7,66 @@ from datetime import datetime
 from scraper import scrape_yallakora, update_live_streams, init_db, DB_PATH
 from bot import broadcast_schedule, check_and_send_alerts
 from zoneinfo import ZoneInfo
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="Sports Bot API", description="Automated Sports scraping and streaming backend")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    
+    # Clean up old Moroccan League matches from database
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM matches WHERE tournament LIKE '%المغربي%' OR tournament LIKE '%العرش%'")
+        conn.commit()
+        conn.close()
+        print("Database cleaned up (Moroccan League matches deleted).")
+    except Exception as e:
+        print(f"Error cleaning database: {e}")
+        
+    # Run initial scrape and stream update on startup so database is never empty
+    print("Running startup scraping tasks...")
+    scrape_three_days()
+    update_live_streams()
+    try:
+        from scraper import update_finished_matches_highlights
+        update_finished_matches_highlights()
+    except Exception as e:
+        print(f"Error updating finished match highlights on startup: {e}")
+    
+    # Run initial Telegram alerts check
+    try:
+        check_and_send_alerts()
+    except Exception as e:
+        print(f"Error checking Telegram alerts on startup: {e}")
+        
+    # Broadcast to Telegram on startup for testing/initialization
+    try:
+        print("Sending initial Telegram schedule broadcast...")
+        broadcast_schedule()
+    except Exception as e:
+        print(f"Error broadcasting on startup: {e}")
+    
+    # Schedule Morning Scrape: Every day at 05:00 AM Cairo time
+    scheduler.add_job(job_morning_scrape, 'cron', hour=5, minute=0)
+    # Schedule Noon Broadcast: Every day at 12:00 PM (noon) Cairo time
+    scheduler.add_job(broadcast_schedule, 'cron', hour=12, minute=0)
+    # Schedule Stream Link Updater: Every 1 minute
+    scheduler.add_job(job_stream_update, 'interval', minutes=1)
+    
+    scheduler.start()
+    print("Scheduler started successfully.")
+    
+    yield
+    
+    scheduler.shutdown()
+    print("Scheduler stopped.")
+
+app = FastAPI(
+    title="Sports Bot API", 
+    description="Automated Sports scraping and streaming backend",
+    lifespan=lifespan
+)
 
 # Enable CORS for all domains so Vercel frontend can call it
 app.add_middleware(
@@ -73,58 +131,7 @@ def job_stream_update():
     except Exception as e:
         print(f"Error checking and sending Telegram alerts: {e}")
 
-@app.on_event("startup")
-def startup_event():
-    init_db()
-    
-    # Clean up old Moroccan League matches from database
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM matches WHERE tournament LIKE '%المغربي%' OR tournament LIKE '%العرش%'")
-        conn.commit()
-        conn.close()
-        print("Database cleaned up (Moroccan League matches deleted).")
-    except Exception as e:
-        print(f"Error cleaning database: {e}")
-        
-    # Run initial scrape and stream update on startup so database is never empty
-    print("Running startup scraping tasks...")
-    scrape_three_days()
-    update_live_streams()
-    try:
-        from scraper import update_finished_matches_highlights
-        update_finished_matches_highlights()
-    except Exception as e:
-        print(f"Error updating finished match highlights on startup: {e}")
-    
-    # Run initial Telegram alerts check
-    try:
-        check_and_send_alerts()
-    except Exception as e:
-        print(f"Error checking Telegram alerts on startup: {e}")
-        
-    # Broadcast to Telegram on startup for testing/initialization
-    try:
-        print("Sending initial Telegram schedule broadcast...")
-        broadcast_schedule()
-    except Exception as e:
-        print(f"Error broadcasting on startup: {e}")
-    
-    # Schedule Morning Scrape: Every day at 05:00 AM Cairo time
-    scheduler.add_job(job_morning_scrape, 'cron', hour=5, minute=0)
-    # Schedule Noon Broadcast: Every day at 12:00 PM (noon) Cairo time
-    scheduler.add_job(broadcast_schedule, 'cron', hour=12, minute=0)
-    # Schedule Stream Link Updater: Every 1 minute
-    scheduler.add_job(job_stream_update, 'interval', minutes=1)
-    
-    scheduler.start()
-    print("Scheduler started successfully.")
-
-@app.on_event("shutdown")
-def shutdown_event():
-    scheduler.shutdown()
-    print("Scheduler stopped.")
+# Lifespan event handlers are configured in top-level app initialization
 
 @app.get("/")
 def read_root():

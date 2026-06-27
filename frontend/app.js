@@ -102,7 +102,19 @@ function displayMatchesForActiveTab() {
     const container = document.getElementById('matches-container');
     const noMatches = document.getElementById('no-matches');
     
-    const filtered = filterMatchesByTab(allMatches, activeTab);
+    let filtered = filterMatchesByTab(allMatches, activeTab);
+    
+    // Apply search filter if input is present
+    const searchInput = document.getElementById('match-search');
+    if (searchInput && searchInput.value.trim() !== '') {
+        const query = searchInput.value.toLowerCase().trim();
+        filtered = filtered.filter(m => 
+            (m.teamA && m.teamA.toLowerCase().includes(query)) ||
+            (m.teamB && m.teamB.toLowerCase().includes(query)) ||
+            (m.tournament && m.tournament.toLowerCase().includes(query)) ||
+            (m.channel && m.channel.toLowerCase().includes(query))
+        );
+    }
     
     if (filtered.length === 0) {
         noMatches.classList.remove('hidden');
@@ -116,6 +128,13 @@ function displayMatchesForActiveTab() {
 
 // Initialize Page
 document.addEventListener('DOMContentLoaded', () => {
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker Registered!', reg))
+            .catch(err => console.log('Service Worker installation failed:', err));
+    }
+
     // Set current date badge
     updateDateBadge();
     
@@ -129,6 +148,14 @@ document.addEventListener('DOMContentLoaded', () => {
             displayMatchesForActiveTab();
         });
     });
+    
+    // Setup search listener
+    const searchInput = document.getElementById('match-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            displayMatchesForActiveTab();
+        });
+    }
     
     // Load Matches
     fetchMatches();
@@ -168,6 +195,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (clapprPlayer && typeof clapprPlayer.play === 'function') {
                 clapprPlayer.play();
             }
+        });
+    }
+
+    // Close Overlay Button specifically (allows watching without clicking the ad)
+    const closeOverlayBtn = document.getElementById('close-overlay-btn');
+    if (closeOverlayBtn) {
+        closeOverlayBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // prevent redirect
+            const overlayAd = document.getElementById('player-overlay-ad');
+            if (overlayAd) overlayAd.classList.add('hidden');
         });
     }
 
@@ -592,9 +629,12 @@ function playSource(source, index) {
     retryCount = 0;
     activeSourceIndex = index;
     
-    // Hide toast overlays
+    // Hide toast overlays and reset other players
     hidePlayerToast();
     placeholder.classList.add('hidden');
+    
+    const telegramContainer = document.getElementById('telegram-player-container');
+    if (telegramContainer) telegramContainer.classList.add('hidden');
 
     // Update external link href and display
     const extLink = document.getElementById('external-stream-link');
@@ -655,21 +695,68 @@ function playSource(source, index) {
         videoPlayerDiv.classList.remove('hidden');
         iframeContainer.classList.add('hidden');
         
-        clapprPlayer = new Clappr.Player({
-            source: source.url,
-            parentId: "#video-player",
-            width: '100%',
-            height: '100%',
-            autoPlay: true,
-            mute: false,
-            mimeType: "application/x-mpegURL",
-            events: {
-                onError: function(err) {
-                    console.warn(`Clappr error on source: ${source.name}`, err);
-                    handlePlayerError(source, index);
+        // Try native Hls.js first for superior speed and stability
+        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+            console.log("[Player Manager] Playing with native Hls.js");
+            const videoElem = document.createElement('video');
+            videoElem.controls = true;
+            videoElem.autoplay = true;
+            videoElem.style.width = '100%';
+            videoElem.style.height = '100%';
+            videoElem.style.backgroundColor = '#000';
+            videoPlayerDiv.appendChild(videoElem);
+            
+            const hls = new Hls({
+                maxMaxBufferLength: 10,
+                enableWorker: true
+            });
+            hls.loadSource(source.url);
+            hls.attachMedia(videoElem);
+            
+            hls.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            console.warn("Hls network error, retrying...");
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            console.warn("Hls media error, recovering...");
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            console.error("Fatal Hls error, switching server...");
+                            hls.destroy();
+                            handlePlayerError(source, index);
+                            break;
+                    }
                 }
-            }
-        });
+            });
+            
+            // Mock Clappr player interface for destroy functions
+            clapprPlayer = {
+                destroy: function() {
+                    hls.destroy();
+                    videoPlayerDiv.innerHTML = '';
+                }
+            };
+        } else {
+            clapprPlayer = new Clappr.Player({
+                source: source.url,
+                parentId: "#video-player",
+                width: '100%',
+                height: '100%',
+                autoPlay: true,
+                mute: false,
+                mimeType: "application/x-mpegURL",
+                events: {
+                    onError: function(err) {
+                        console.warn(`Clappr error on source: ${source.name}`, err);
+                        handlePlayerError(source, index);
+                    }
+                }
+            });
+        }
     } else if (source.type === 'iframe') {
         videoPlayerDiv.classList.add('hidden');
         iframeContainer.classList.remove('hidden');
@@ -681,6 +768,40 @@ function playSource(source, index) {
             iframe.setAttribute('referrerpolicy', 'no-referrer');
             iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation allow-popups allow-popups-to-escape-sandbox');
             iframe.src = `${API_BASE_URL}/api/proxy?url=${encodeURIComponent(source.url)}`;
+        }
+    } else if (source.type === 'telegram') {
+        videoPlayerDiv.classList.add('hidden');
+        iframeContainer.classList.add('hidden');
+        const telegramContainer = document.getElementById('telegram-player-container');
+        const telegramWidgetBox = document.getElementById('telegram-widget-box');
+        
+        if (telegramContainer && telegramWidgetBox) {
+            telegramContainer.classList.remove('hidden');
+            telegramWidgetBox.innerHTML = '';
+            
+            try {
+                // Extract channel name and message id
+                const cleanUrl = source.url.replace('https://', '').replace('http://', '');
+                const parts = cleanUrl.split('/');
+                if (parts.length >= 3) {
+                    const channel = parts[1];
+                    const msgId = parts[2].split('?')[0];
+                    
+                    console.log(`[Telegram Embed] Rendering post ${channel}/${msgId}`);
+                    const script = document.createElement('script');
+                    script.async = true;
+                    script.src = "https://telegram.org/js/telegram-widget.js?22";
+                    script.setAttribute('data-telegram-post', `${channel}/${msgId}`);
+                    script.setAttribute('data-width', '100%');
+                    script.setAttribute('data-userpic', 'false');
+                    telegramWidgetBox.appendChild(script);
+                } else {
+                    telegramWidgetBox.innerHTML = `<div style="color:white;text-align:center;padding:20px;">الرابط غير صالح للتضمين: ${source.url}</div>`;
+                }
+            } catch (ex) {
+                console.error("Error creating Telegram widget:", ex);
+                telegramWidgetBox.innerHTML = `<div style="color:white;text-align:center;padding:20px;">خطأ في تحميل مشغل تليجرام</div>`;
+            }
         }
     }
 }
@@ -812,6 +933,9 @@ function closePlayer() {
     playerSection.classList.add('hidden');
     tabsContainer.classList.add('hidden');
     hidePlayerToast();
+    
+    const telegramContainer = document.getElementById('telegram-player-container');
+    if (telegramContainer) telegramContainer.classList.add('hidden');
     
     const overlayAd = document.getElementById('player-overlay-ad');
     if (overlayAd) overlayAd.classList.add('hidden');
