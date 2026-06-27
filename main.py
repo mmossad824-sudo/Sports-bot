@@ -1,81 +1,13 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
+from contextlib import asynccontextmanager
 import sqlite3
 import os
 from datetime import datetime
 from scraper import scrape_yallakora, update_live_streams, init_db, DB_PATH
 from bot import broadcast_schedule, check_and_send_alerts
 from zoneinfo import ZoneInfo
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    init_db()
-    
-    # Clean up old Moroccan League matches from database
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM matches WHERE tournament LIKE '%المغربي%' OR tournament LIKE '%العرش%'")
-        conn.commit()
-        conn.close()
-        print("Database cleaned up (Moroccan League matches deleted).")
-    except Exception as e:
-        print(f"Error cleaning database: {e}")
-        
-    # Run initial scrape and stream update on startup so database is never empty
-    print("Running startup scraping tasks...")
-    scrape_three_days()
-    update_live_streams()
-    try:
-        from scraper import update_finished_matches_highlights
-        update_finished_matches_highlights()
-    except Exception as e:
-        print(f"Error updating finished match highlights on startup: {e}")
-    
-    # Run initial Telegram alerts check
-    try:
-        check_and_send_alerts()
-    except Exception as e:
-        print(f"Error checking Telegram alerts on startup: {e}")
-        
-    # Broadcast to Telegram on startup for testing/initialization
-    try:
-        print("Sending initial Telegram schedule broadcast...")
-        broadcast_schedule()
-    except Exception as e:
-        print(f"Error broadcasting on startup: {e}")
-    
-    # Schedule Morning Scrape: Every day at 05:00 AM Cairo time
-    scheduler.add_job(job_morning_scrape, 'cron', hour=5, minute=0)
-    # Schedule Noon Broadcast: Every day at 12:00 PM (noon) Cairo time
-    scheduler.add_job(broadcast_schedule, 'cron', hour=12, minute=0)
-    # Schedule Stream Link Updater: Every 1 minute
-    scheduler.add_job(job_stream_update, 'interval', minutes=1)
-    
-    scheduler.start()
-    print("Scheduler started successfully.")
-    
-    yield
-    
-    scheduler.shutdown()
-    print("Scheduler stopped.")
-
-app = FastAPI(
-    title="Sports Bot API", 
-    description="Automated Sports scraping and streaming backend",
-    lifespan=lifespan
-)
-
-# Enable CORS for all domains so Vercel frontend can call it
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 try:
     cairo_tz = ZoneInfo("Africa/Cairo")
@@ -100,7 +32,6 @@ def scrape_three_days():
 def job_morning_scrape():
     print(f"[{datetime.now().isoformat()}] Starting scheduled morning scrape...")
     scrape_three_days()
-    # Broadcast daily matches list to Telegram
     try:
         broadcast_schedule()
     except Exception as e:
@@ -111,7 +42,6 @@ def job_stream_update():
     try:
         from datetime import timedelta
         cairo_now = datetime.utcnow() + timedelta(hours=3)
-        # Scrape only today's schedule during fast intervals to save resources
         d = cairo_now
         date_str = f"{d.month}/{d.day}/{d.year}"
         scrape_yallakora(date_str)
@@ -131,7 +61,71 @@ def job_stream_update():
     except Exception as e:
         print(f"Error checking and sending Telegram alerts: {e}")
 
-# Lifespan event handlers are configured in top-level app initialization
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    
+    # Clean up old Moroccan League matches from database
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM matches WHERE tournament LIKE '%المغربي%' OR tournament LIKE '%العرش%'")
+        conn.commit()
+        conn.close()
+        print("Database cleaned up (Moroccan League matches deleted).")
+    except Exception as e:
+        print(f"Error cleaning database: {e}")
+        
+    # Run initial scrape and stream update on startup
+    print("Running startup scraping tasks...")
+    scrape_three_days()
+    update_live_streams()
+    try:
+        from scraper import update_finished_matches_highlights
+        update_finished_matches_highlights()
+    except Exception as e:
+        print(f"Error updating finished match highlights on startup: {e}")
+    
+    try:
+        check_and_send_alerts()
+    except Exception as e:
+        print(f"Error checking Telegram alerts on startup: {e}")
+        
+    try:
+        print("Sending initial Telegram schedule broadcast...")
+        broadcast_schedule()
+    except Exception as e:
+        print(f"Error broadcasting on startup: {e}")
+    
+    # Schedule Morning Scrape: Every day at 05:00 AM Cairo time
+    scheduler.add_job(job_morning_scrape, 'cron', hour=5, minute=0)
+    # Schedule Noon Broadcast: Every day at 12:00 PM (noon) Cairo time
+    scheduler.add_job(broadcast_schedule, 'cron', hour=12, minute=0)
+    # Schedule Stream Link Updater: Every 1 minute
+    scheduler.add_job(job_stream_update, 'interval', minutes=1)
+    
+    scheduler.start()
+    print("Scheduler started successfully.")
+    
+    yield
+    
+    scheduler.shutdown()
+    print("Scheduler stopped.")
+
+app = FastAPI(
+    title="Sports Bot API",
+    description="Automated Sports scraping and streaming backend",
+    lifespan=lifespan
+)
+
+# Enable CORS for all domains so Vercel frontend can call it
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def read_root():
@@ -224,7 +218,6 @@ def proxy_iframe(url: str):
     from bs4 import BeautifulSoup
     import requests
     import urllib.parse
-    import os
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
@@ -266,12 +259,13 @@ def proxy_iframe(url: str):
         # Inject referrer policy to bypass HLS hotlinking check
         new_meta = soup.new_tag('meta', name='referrer', content='no-referrer')
         head.insert(0, new_meta)
-            
-        # Send headers to allow embedding and CORS
+        
+        # Strip X-Frame-Options and CSP headers that block embedding
         headers_to_send = {
             "Access-Control-Allow-Origin": "*",
             "Cache-Control": "no-store, no-cache, must-revalidate",
             "Content-Type": "text/html; charset=utf-8"
+            # Intentionally NOT forwarding X-Frame-Options or Content-Security-Policy
         }
         
         return HTMLResponse(content=str(soup), headers=headers_to_send)
