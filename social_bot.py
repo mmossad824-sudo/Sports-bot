@@ -25,7 +25,7 @@ TG_CHANNEL_ID  = os.getenv("TELEGRAM_CHANNEL_ID", "@yalla_shoot_today_Group")
 WEBSITE_URL    = os.getenv("WEBSITE_URL",    "https://yalla-shoot-today.vercel.app")
 HF_API_URL     = os.getenv("HF_API_URL",     "https://mmossad824-sports-bot.hf.space")
 FONT_PATH      = "Cairo-Bold.ttf"
-FONT_URL       = "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Bold.ttf"
+FONT_URL       = "https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hAc5W1Q.ttf"
 SPONSOR_URL    = "https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039"
 
 # State file to avoid duplicate posts
