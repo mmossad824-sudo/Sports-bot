@@ -43,7 +43,6 @@
         <button class="adm-btn" id="ad-click-btn">
             <i class="fa-solid fa-play"></i> شاهد الآن مجاناً
         </button>
-        <span class="adm-skip" id="ad-modal-skip">تخطي</span>
     </div>
 </div>
 
@@ -163,6 +162,29 @@
                     <i class="fa-solid fa-arrow-up-right-from-square"></i>
                     <span>شاشة سوداء؟ اضغط هنا للمشاهدة مباشرة</span>
                 </a>
+            </div>
+
+            <!-- Match Analysis & Predictions (SEO) -->
+            <div id="match-analysis-section" class="match-analysis hidden">
+                <div class="analysis-hdr">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <h3>تحليل وتوقعات المباراة</h3>
+                </div>
+                <div class="analysis-stats">
+                    <div class="stat-bar-wrap">
+                        <span id="stat-team-a-name">الفريق الأول</span>
+                        <div class="stat-bar"><div id="stat-bar-a" style="width: 40%"></div><span id="stat-val-a">40%</span></div>
+                    </div>
+                    <div class="stat-bar-wrap draw">
+                        <span>التعادل</span>
+                        <div class="stat-bar"><div id="stat-bar-draw" style="width: 20%"></div><span id="stat-val-draw">20%</span></div>
+                    </div>
+                    <div class="stat-bar-wrap">
+                        <span id="stat-team-b-name">الفريق الثاني</span>
+                        <div class="stat-bar"><div id="stat-bar-b" style="width: 40%"></div><span id="stat-val-b">40%</span></div>
+                    </div>
+                </div>
+                <p id="analysis-text" class="analysis-desc"></p>
             </div>
 
             <!-- Match Info -->

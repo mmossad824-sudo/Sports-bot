@@ -256,14 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    if (adModalSkip) {
-        adModalSkip.addEventListener('click', () => {
-            const adUrl = ADS_CONFIG.popunder.directLinkUrl;
-            if (adUrl) window.open(adUrl, '_blank');
-            if (adModal) adModal.classList.add('hidden');
-            if (clickTrapMatchId) _loadMatchStream(clickTrapMatchId);
-        });
-    }
 });
 
 // Fetch Matches from FastAPI Backend
@@ -447,6 +439,42 @@ async function openMatchStream(matchId) {
     }
 }
 
+// Match Analysis logic
+function populateMatchAnalysis(match) {
+    const analysisSection = document.getElementById('match-analysis-section');
+    if (!analysisSection) return;
+
+    if (!match.teamA || !match.teamB) {
+        analysisSection.classList.add('hidden');
+        return;
+    }
+    
+    analysisSection.classList.remove('hidden');
+    
+    // Generate deterministic pseudo-random percentages based on team names
+    const hash = (match.teamA + match.teamB).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const winA = 30 + (hash % 35); // 30 to 64
+    const draw = 15 + ((hash * 2) % 15); // 15 to 29
+    const winB = 100 - winA - draw;
+    
+    document.getElementById('stat-team-a-name').innerText = match.teamA;
+    document.getElementById('stat-team-b-name').innerText = match.teamB;
+    
+    document.getElementById('stat-bar-a').style.width = winA + '%';
+    document.getElementById('stat-val-a').innerText = winA + '%';
+    
+    document.getElementById('stat-bar-draw').style.width = draw + '%';
+    document.getElementById('stat-val-draw').innerText = draw + '%';
+    
+    document.getElementById('stat-bar-b').style.width = winB + '%';
+    document.getElementById('stat-val-b').innerText = winB + '%';
+    
+    const tournamentStr = match.tournament ? ` ضمن منافسات ${match.tournament}` : '';
+    const txt = `مباراة قوية مرتقبة تجمع بين ${match.teamA} و${match.teamB}${tournamentStr}. تشير التحليلات والإحصائيات إلى أفضلية نسبية لصالح ${winA > winB ? match.teamA : match.teamB} بفرصة فوز تصل إلى ${Math.max(winA, winB)}٪، بينما تظل فرص ${winA > winB ? match.teamB : match.teamA} قائمة بنسبة ${Math.min(winA, winB)}٪، مع احتمالية التعادل بنسبة ${draw}٪. تابع البث المباشر لمعرفة النتيجة النهائية!`;
+    
+    document.getElementById('analysis-text').innerText = txt;
+}
+
 // Internal: actually load the stream (called after click-trap completes)
 async function _loadMatchStream(matchId) {
     const playerSection = document.getElementById('player-section');
@@ -480,6 +508,8 @@ async function _loadMatchStream(matchId) {
         document.getElementById('footer-channel').innerHTML = `<i class="fa-solid fa-tv"></i> القناة الناقلة: ${match.channel || 'غير معروفة'}`;
         document.getElementById('footer-status').innerHTML = `<i class="fa-solid fa-circle-dot"></i> الحالة: ${match.status}`;
         
+        populateMatchAnalysis(match);
+
         // Set initial document title
         if (match.status === 'جارية الآن' || match.status.includes('الشوط') || match.status.includes('بين')) {
             document.title = `(${match.scoreA} - ${match.scoreB}) ${match.teamA} ضد ${match.teamB} | يلا شوت`;

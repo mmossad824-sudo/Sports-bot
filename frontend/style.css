@@ -632,6 +632,37 @@ button { cursor: pointer; font-family: var(--font); -webkit-tap-highlight-color:
 .ext-stream-btn:hover { background: linear-gradient(135deg, #f43f5e, #e11d48); }
 .ext-stream-btn:active { transform: scale(0.98); }
 
+/* Match Analysis (SEO) */
+.match-analysis {
+    padding: 16px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+}
+.match-analysis.hidden { display: none !important; }
+.analysis-hdr {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    color: var(--accent);
+}
+.analysis-hdr h3 { font-size: 1rem; font-weight: 800; }
+.analysis-stats {
+    display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px;
+}
+.stat-bar-wrap {
+    display: flex; align-items: center; gap: 10px; font-size: 0.8rem; font-weight: 700;
+}
+.stat-bar-wrap > span:first-child { width: 80px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-bar {
+    flex: 1; height: 12px; background: var(--bg3); border-radius: 6px; position: relative; overflow: hidden;
+}
+.stat-bar div { height: 100%; background: var(--accent); border-radius: 6px; transition: width 1s ease-out; }
+.stat-bar-wrap.draw .stat-bar div { background: var(--text3); }
+.stat-bar-wrap:last-child .stat-bar div { background: var(--live); }
+.stat-bar span { position: absolute; left: 6px; top: -1px; font-size: 0.65rem; color: #fff; line-height: 14px; }
+.analysis-desc {
+    font-size: 0.85rem; color: var(--text2); line-height: 1.6;
+    background: var(--bg3); padding: 12px; border-radius: 8px;
+}
+
 /* Match info strip */
 .match-info-strip {
     padding: 10px 14px;
