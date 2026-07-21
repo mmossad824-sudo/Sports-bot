@@ -52,7 +52,7 @@
         <button class="hdr-menu-btn" id="hdr-menu-btn" aria-label="القائمة">
             <span></span><span></span><span></span>
         </button>
-        <a class="hdr-logo" href="#">
+        <a class="hdr-logo" href="/">
             <i class="fa-solid fa-circle-play"></i>
             <span>يلا <span class="hdr-logo-accent">شوت</span></span>
         </a>
@@ -68,6 +68,15 @@
         <button id="search-clear-btn"><i class="fa-solid fa-xmark"></i></button>
     </div>
 </header>
+
+<!-- ══ NEWS TICKER ══ -->
+<div class="news-ticker">
+    <div class="ticker-label">عاجل</div>
+    <div class="ticker-scroll">
+        <p>🔥 أهلاً بكم في يلا شوت - تغطية حصرية ومباشرة لأهم مباريات اليوم بأعلى جودة وبدون تقطيع! استخدم القائمة الجانبية للتنقل بين مباريات الأمس واليوم والغد. 🔥</p>
+    </div>
+</div>
+
 
 <!-- ══ SIDE NAV ══ -->
 <nav class="side-nav hidden" id="side-nav">
@@ -185,6 +194,15 @@
                     </div>
                 </div>
                 <p id="analysis-text" class="analysis-desc"></p>
+            </div>
+            
+            <!-- Live Chat Section -->
+            <div id="live-chat-section" class="live-chat-wrap hidden">
+                <div class="chat-hdr">
+                    <i class="fa-solid fa-comments"></i>
+                    <h3>الدردشة الحية وتوقعات الجماهير</h3>
+                </div>
+                <div id="disqus_thread"></div>
             </div>
 
             <!-- Match Info -->

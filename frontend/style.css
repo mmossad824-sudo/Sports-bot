@@ -34,7 +34,7 @@ body {
     color: var(--text);
     min-height: 100vh;
     overflow-x: hidden;
-    padding-top: var(--hdr-h);
+    padding-top: calc(var(--hdr-h) + 36px); /* header + ticker */
     padding-bottom: env(safe-area-inset-bottom, 0);
     line-height: 1.5;
 }
@@ -130,6 +130,56 @@ button { cursor: pointer; font-family: var(--font); -webkit-tap-highlight-color:
     background: transparent; border: none;
     color: var(--text3); font-size: 1.1rem;
     padding: 6px;
+}
+
+/* ══════════════════════════════════════════════════
+   NEWS TICKER
+══════════════════════════════════════════════════ */
+.news-ticker {
+    position: fixed;
+    top: var(--hdr-h);
+    left: 0; right: 0;
+    height: 36px;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    z-index: 490;
+    overflow: hidden;
+}
+.ticker-label {
+    background: var(--danger);
+    color: #fff;
+    font-weight: 900;
+    font-size: 0.8rem;
+    padding: 0 16px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.3);
+}
+.ticker-scroll {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+.ticker-scroll p {
+    position: absolute;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    font-weight: 700;
+    will-change: transform;
+    animation: scrollTicker 30s linear infinite;
+}
+@keyframes scrollTicker {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100vw); }
 }
 
 /* ══════════════════════════════════════════════════
@@ -662,6 +712,20 @@ button { cursor: pointer; font-family: var(--font); -webkit-tap-highlight-color:
     font-size: 0.85rem; color: var(--text2); line-height: 1.6;
     background: var(--bg3); padding: 12px; border-radius: 8px;
 }
+
+/* Live Chat */
+.live-chat-wrap {
+    padding: 16px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+.live-chat-wrap.hidden { display: none !important; }
+.chat-hdr {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    color: var(--text);
+}
+.chat-hdr h3 { font-size: 1rem; font-weight: 800; }
+#disqus_thread { min-height: 200px; }
 
 /* Match info strip */
 .match-info-strip {

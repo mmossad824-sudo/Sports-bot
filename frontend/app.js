@@ -109,7 +109,7 @@ function displayMatchesForActiveTab() {
 document.addEventListener('DOMContentLoaded', () => {
     updateDateBadge();
 
-    // ── Date strip tabs ──────────────────────────────────────────────────────
+    // Setup Tab click handlers
     document.querySelectorAll('.ds-btn, .snav-tab').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -230,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Click-Trap Modal ─────────────────────────────────────────────────────
     const adClickBtn  = document.getElementById('ad-click-btn');
     const adModal     = document.getElementById('ad-click-modal');
-    const adModalSkip = document.getElementById('ad-modal-skip');
 
     if (adClickBtn && adModal) {
         adClickBtn.addEventListener('click', () => {
@@ -268,11 +267,19 @@ async function fetchMatches() {
         const response = await fetch(`${API_BASE_URL}/api/matches`);
         if (!response.ok) throw new Error('Failed to fetch matches');
         
-        const matches = await response.json();
-        allMatches = matches; // Store globally
-        spinner.classList.add('hidden');
-        
+        const data = await response.json();
+        allMatches = data.matches || [];
         displayMatchesForActiveTab();
+        
+        // Handle SEO URL: ?match=id
+        const urlParams = new URLSearchParams(window.location.search);
+        const matchParam = urlParams.get('match');
+        if (matchParam && !activeMatchId) {
+            const m = allMatches.find(x => x.id === matchParam);
+            if (m) openMatchStream(matchParam);
+        }
+        
+        spinner.classList.add('hidden');
     } catch (error) {
         console.error('Error loading matches:', error);
         spinner.classList.add('hidden');
@@ -414,6 +421,11 @@ function renderMatchCard(match) {
 
 // Open Live Stream Player — shows click-trap modal first
 async function openMatchStream(matchId) {
+    // Update SEO URL without reloading
+    const url = new URL(window.location);
+    url.searchParams.set('match', matchId);
+    window.history.pushState({ matchId }, '', url);
+
     const adModal = document.getElementById('ad-click-modal');
     if (adModal) {
         // Reset modal state
@@ -475,6 +487,40 @@ function populateMatchAnalysis(match) {
     document.getElementById('analysis-text').innerText = txt;
 }
 
+// Initialize Live Chat (Disqus)
+function initLiveChat(match) {
+    const chatSection = document.getElementById('live-chat-section');
+    if (!chatSection) return;
+    
+    chatSection.classList.remove('hidden');
+    
+    // We use a generic shortname for demo, replace 'yallashoot-demo' with real shortname
+    const disqusShortname = 'yallashoot-demo';
+    const pageUrl = window.location.origin + window.location.pathname + '?match=' + match.id;
+    const pageId = 'match_' + match.id;
+    
+    if (window.DISQUS) {
+        window.DISQUS.reset({
+            reload: true,
+            config: function () {
+                this.page.identifier = pageId;
+                this.page.url = pageUrl;
+                this.page.title = match.teamA + ' vs ' + match.teamB;
+            }
+        });
+    } else {
+        window.disqus_config = function () {
+            this.page.identifier = pageId;
+            this.page.url = pageUrl;
+            this.page.title = match.teamA + ' vs ' + match.teamB;
+        };
+        const script = document.createElement('script');
+        script.src = 'https://' + disqusShortname + '.disqus.com/embed.js';
+        script.setAttribute('data-timestamp', +new Date());
+        (document.head || document.body).appendChild(script);
+    }
+}
+
 // Internal: actually load the stream (called after click-trap completes)
 async function _loadMatchStream(matchId) {
     const playerSection = document.getElementById('player-section');
@@ -509,6 +555,7 @@ async function _loadMatchStream(matchId) {
         document.getElementById('footer-status').innerHTML = `<i class="fa-solid fa-circle-dot"></i> الحالة: ${match.status}`;
         
         populateMatchAnalysis(match);
+        initLiveChat(match);
 
         // Set initial document title
         if (match.status === 'جارية الآن' || match.status.includes('الشوط') || match.status.includes('بين')) {
@@ -992,6 +1039,14 @@ function closePlayer() {
 
     const overlayAd = document.getElementById('player-overlay-ad');
     if (overlayAd) overlayAd.classList.add('hidden');
+
+    const chatSection = document.getElementById('live-chat-section');
+    if (chatSection) chatSection.classList.add('hidden');
+
+    // Remove ?match= from URL
+    const url = new URL(window.location);
+    url.searchParams.delete('match');
+    window.history.pushState({}, '', url);
 
     document.title = 'يلا شوت - بث مباشر مباريات اليوم';
 
