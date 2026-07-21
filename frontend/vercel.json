@@ -1,38 +1,13 @@
 {
-  "builds": [
-    { "src": "api/*.py", "use": "@vercel/python" },
-    { "src": "index.html", "use": "@vercel/static" },
-    { "src": "style.css", "use": "@vercel/static" },
-    { "src": "app.js", "use": "@vercel/static" },
-    { "src": "manifest.json", "use": "@vercel/static" },
-    { "src": "sw.js", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/api/cron", "dest": "api/cron.py" },
-    { "src": "/api/matches", "dest": "api/matches.py" },
-    { "src": "/api/match_detail", "dest": "api/match_detail.py" },
-    { "src": "/api/search_streams", "dest": "api/search_streams.py" },
-    { "src": "/api/telegram_proxy", "dest": "api/telegram_proxy.py" },
-    { "src": "/api/search_highlights", "dest": "api/search_highlights.py" },
-    { "src": "/api/proxy", "dest": "api/proxy.py" },
-    { "src": "/(.*)", "dest": "/$1" }
-  ],
-  "crons": [
+  "headers": [
     {
-      "path": "/api/cron",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/cron",
-      "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron",
-      "schedule": "0 18 * * *"
-    },
-    {
-      "path": "/api/cron",
-      "schedule": "0 21 * * *"
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     }
   ]
 }
