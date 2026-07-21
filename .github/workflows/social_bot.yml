@@ -1,0 +1,60 @@
+name: 🤖 Social Media Auto-Poster
+
+on:
+  schedule:
+    # Morning schedule post: every day at 08:00 Cairo time (05:00 UTC)
+    - cron: "0 5 * * *"
+    # Hourly match alerts: every hour
+    - cron: "0 * * * *"
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Mode: schedule or alerts"
+        required: true
+        default: "alerts"
+
+jobs:
+  post-social:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📚 Install Dependencies
+        run: |
+          pip install requests Pillow arabic-reshaper python-bidi
+
+      - name: 🌐 Sync matches DB from Hugging Face
+        run: |
+          curl -L "https://mmossad824-sports-bot.hf.space/api/matches" \
+            -o /dev/null --max-time 10 || true
+        continue-on-error: true
+
+      - name: 📅 Run Daily Schedule (08:00 Cairo only)
+        if: github.event.schedule == '0 5 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'schedule')
+        env:
+          FB_PAGE_TOKEN:      ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID:         ${{ secrets.FB_PAGE_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          WEBSITE_URL:        ${{ secrets.WEBSITE_URL }}
+        run: python social_bot.py schedule
+
+      - name: 🔔 Run Match Alerts (every hour)
+        if: github.event.schedule == '0 * * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'alerts')
+        env:
+          FB_PAGE_TOKEN:      ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID:         ${{ secrets.FB_PAGE_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          WEBSITE_URL:        ${{ secrets.WEBSITE_URL }}
+        run: python social_bot.py alerts
