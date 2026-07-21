@@ -135,11 +135,17 @@ def get_logo(url: str, size=(200, 200)):
 
 
 def render_arabic(text: str) -> str:
-    """Reshape Arabic text for Pillow."""
+    """Reshape Arabic text for Pillow correctly line by line."""
     try:
         import arabic_reshaper
         from bidi.algorithm import get_display
-        return get_display(arabic_reshaper.reshape(text))
+        lines = text.split("\n")
+        reshaped_lines = []
+        for line in lines:
+            reshaped = arabic_reshaper.reshape(line)
+            bidi_line = get_display(reshaped)
+            reshaped_lines.append(bidi_line)
+        return "\n".join(reshaped_lines)
     except Exception:
         return text
 
