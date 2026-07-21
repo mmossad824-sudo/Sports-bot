@@ -1017,3 +1017,17 @@ body.lang-en .ad-card-text {
     display: inline-flex; align-items: center; gap: 6px;
 }
 .fb-strip-btn:hover { background: #e7f0ff; color: #0d5fcb; }
+
+/* ══════════════════════════════════════════════════
+   FLOATING SOCIAL BUTTONS & YOUTUBE STYLING
+══════════════════════════════════════════════════ */
+.floating-btn.yt-btn {
+    background: #ff0000 !important;
+    box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4) !important;
+}
+.floating-btn.yt-btn:hover {
+    background: #cc0000 !important;
+}
+.footer-socials a i.fa-youtube:hover {
+    color: #ff0000 !important;
+}

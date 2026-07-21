@@ -26,6 +26,7 @@ const TRANSLATIONS = {
         switchLang:     'English',
         telegramBtn:    'قناة التليجرام',
         facebookBtn:    'فيسبوك',
+        youtubeBtn:     'يوتيوب',
         joinTelegram:   'انضم للجروب',
         tickerText:     '🔥 أهلاً بكم في يلا شوت - تغطية حصرية ومباشرة لأهم مباريات اليوم بأعلى جودة وبدون تقطيع! 🔥',
         breaking:       'عاجل',
@@ -75,6 +76,7 @@ const TRANSLATIONS = {
         switchLang:     'عربي',
         telegramBtn:    'Telegram Channel',
         facebookBtn:    'Facebook',
+        youtubeBtn:     'YouTube',
         joinTelegram:   'Join Group',
         tickerText:     '🔥 Welcome to Yalla Shoot — HD live football streams, no buffering! Today\'s biggest matches covered. 🔥',
         breaking:       'Breaking',
@@ -195,6 +197,8 @@ function applyLanguage() {
     if (fbBtn) fbBtn.textContent = t('facebookBtn');
     const tgFloatBtn = document.querySelector('.floating-btn.tg-btn span');
     if (tgFloatBtn) tgFloatBtn.textContent = t('telegramBtn');
+    const ytFloatBtn = document.querySelector('.floating-btn.yt-btn span');
+    if (ytFloatBtn) ytFloatBtn.textContent = t('youtubeBtn');
 
     // Footer
     const footerP = document.querySelector('.site-footer p');
