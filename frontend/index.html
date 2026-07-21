@@ -2,208 +2,206 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="referrer" content="no-referrer">
-    <meta name="theme-color" content="#0b0f19">
-    <meta name="description" content="يلا شوت توداي - شاهد بث مباشر لمباريات اليوم بدون تقطيع. أهداف وملخصات الدوريات الكبرى.">
-    <title>يلا شوت توداي - جدول المباريات والبث المباشر</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f1420">
+    <meta name="description" content="يلا شوت - مشاهدة مباريات اليوم بث مباشر بدون تقطيع بجودة عالية">
+    <meta name="keywords" content="يلا شوت, بث مباشر, مباريات اليوم, كورة لايف, yalla shoot">
+    <meta property="og:title" content="يلا شوت - بث مباشر مباريات اليوم">
+    <meta property="og:description" content="شاهد مباريات اليوم بث مباشر مجاناً">
+    <title>يلا شوت - بث مباشر مباريات اليوم</title>
 
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
-    <!-- FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- HLS.js -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
-    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-    <link rel="stylesheet" href="style.css?v=2.0">
-
-    <!-- Service Worker -->
+    <link rel="stylesheet" href="style.css?v=3.0">
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
+        window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
       }
     </script>
 </head>
 <body>
-    <!-- Background glows -->
-    <div class="bg-glow bg-glow-1"></div>
-    <div class="bg-glow bg-glow-2"></div>
 
-    <!-- ══════════ CLICK-TRAP AD MODAL ══════════ -->
-    <!-- Shows after user picks a match. 3 clicks required before the stream loads. Each click opens an ad. -->
-    <div id="ad-click-modal" class="hidden">
-        <i class="fa-solid fa-circle-play ad-modal-icon"></i>
-        <div class="ad-modal-title">اضغط لتشغيل البث المباشر</div>
-        <div class="ad-modal-subtitle">اضغط الزر <strong id="ad-clicks-needed">3</strong> مرات لتخطي الخطوات وبدء المشاهدة مجاناً</div>
-        <div class="ad-modal-counter" id="ad-counter-display">3</div>
-        <!-- Dots progress -->
-        <div class="ad-modal-progress">
-            <div class="ad-modal-dot" id="ad-dot-1"></div>
-            <div class="ad-modal-dot" id="ad-dot-2"></div>
-            <div class="ad-modal-dot" id="ad-dot-3"></div>
+<!-- ══ CLICK-TRAP AD MODAL ══ -->
+<div id="ad-click-modal" class="hidden">
+    <div class="adm-inner">
+        <i class="fa-solid fa-circle-play adm-icon"></i>
+        <div class="adm-title">اضغط لبدء البث المباشر</div>
+        <div class="adm-sub">اضغط الزر <strong id="ad-clicks-needed">3</strong> مرات لبدء المشاهدة المجانية</div>
+        <div class="adm-counter" id="ad-counter-display">3</div>
+        <div class="adm-dots">
+            <span class="adm-dot" id="ad-dot-1"></span>
+            <span class="adm-dot" id="ad-dot-2"></span>
+            <span class="adm-dot" id="ad-dot-3"></span>
         </div>
-        <button class="ad-modal-btn" id="ad-click-btn">
-            <i class="fa-solid fa-play"></i> اضغط هنا للمشاهدة المجانية
+        <button class="adm-btn" id="ad-click-btn">
+            <i class="fa-solid fa-play"></i> شاهد الآن مجاناً
         </button>
-        <span class="ad-modal-skip" id="ad-modal-skip">تخطي (اشترك في القناة)</span>
+        <span class="adm-skip" id="ad-modal-skip">تخطي</span>
+    </div>
+</div>
+
+<!-- ══ HEADER ══ -->
+<header class="site-header" id="site-header">
+    <div class="hdr-inner">
+        <button class="hdr-menu-btn" id="hdr-menu-btn" aria-label="القائمة">
+            <span></span><span></span><span></span>
+        </button>
+        <a class="hdr-logo" href="#">
+            <i class="fa-solid fa-circle-play"></i>
+            <span>يلا <span class="hdr-logo-accent">شوت</span></span>
+        </a>
+        <div class="hdr-actions">
+            <button class="hdr-icon-btn" id="search-toggle-btn" aria-label="بحث">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+        </div>
+    </div>
+    <!-- Search Bar -->
+    <div class="hdr-search-bar hidden" id="hdr-search-bar">
+        <input type="text" id="search-input" placeholder="ابحث عن مباراة أو فريق..." autocomplete="off">
+        <button id="search-clear-btn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+</header>
+
+<!-- ══ SIDE NAV ══ -->
+<nav class="side-nav hidden" id="side-nav">
+    <div class="side-nav-header">
+        <span>يلا شوت</span>
+        <button id="side-nav-close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <ul class="side-nav-list">
+        <li><a href="#" data-tab="today" class="snav-tab active"><i class="fa-solid fa-calendar-day"></i> مباريات اليوم</a></li>
+        <li><a href="#" data-tab="yesterday" class="snav-tab"><i class="fa-solid fa-rotate-left"></i> مباريات الأمس</a></li>
+        <li><a href="#" data-tab="tomorrow" class="snav-tab"><i class="fa-solid fa-calendar-plus"></i> مباريات الغد</a></li>
+    </ul>
+</nav>
+<div class="nav-overlay hidden" id="nav-overlay"></div>
+
+<!-- ══ MAIN ══ -->
+<main class="site-main">
+    <!-- Date Tabs (Desktop) -->
+    <div class="date-strip">
+        <button class="ds-btn" data-tab="yesterday"><i class="fa-solid fa-rotate-left"></i> الأمس</button>
+        <button class="ds-btn active" data-tab="today"><i class="fa-solid fa-circle-dot live-dot"></i> اليوم</button>
+        <button class="ds-btn" data-tab="tomorrow"><i class="fa-solid fa-calendar-plus"></i> الغد</button>
     </div>
 
-    <header class="header">
-        <div class="container header-container">
-            <div class="logo">
-                <i class="fa-solid fa-circle-play logo-icon"></i>
-                <span class="logo-text">Yalla<span class="highlight">Shoot</span></span>
+    <!-- Page Title -->
+    <div class="page-title-bar">
+        <h1 id="page-title-text">مباريات اليوم بث مباشر</h1>
+        <span id="current-date" class="page-date"></span>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-spinner" class="loading-wrap">
+        <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+        <p>جاري تحميل المباريات...</p>
+    </div>
+
+    <!-- No Matches -->
+    <div id="no-matches" class="no-matches-wrap hidden">
+        <i class="fa-regular fa-face-sad-tear"></i>
+        <p>لا توجد مباريات مجدولة في هذا اليوم</p>
+    </div>
+
+    <!-- Matches Grid -->
+    <div id="matches-container" class="matches-grid"></div>
+
+    <!-- ══ VIDEO PLAYER ══ -->
+    <section id="player-section" class="player-section hidden">
+        <div class="player-box">
+
+            <!-- Player Header -->
+            <div class="player-hdr">
+                <div class="player-hdr-title">
+                    <span class="live-badge-sm"><i class="fa-solid fa-circle"></i> مباشر</span>
+                    <h2 id="player-title">بث مباشر</h2>
+                </div>
+                <div class="player-hdr-btns">
+                    <button id="fullscreen-player" class="phr-btn" title="ملء الشاشة"><i class="fa-solid fa-expand"></i></button>
+                    <button id="close-player" class="phr-btn phr-close" title="إغلاق"><i class="fa-solid fa-xmark"></i></button>
+                </div>
             </div>
-            <div class="header-status">
-                <span class="status-indicator"></span>
-                <span>بث مباشر</span>
+
+            <!-- Server Tabs -->
+            <div id="sources-tabs" class="sources-tabs hidden"></div>
+
+            <!-- Video Area -->
+            <div class="video-wrap">
+                <!-- Overlay Ad -->
+                <div id="player-overlay-ad" class="vid-overlay hidden">
+                    <button id="close-overlay-btn" class="vid-overlay-skip"><i class="fa-solid fa-xmark"></i> تخطي الإعلان</button>
+                    <div class="vid-overlay-body">
+                        <i class="fa-solid fa-circle-play vid-overlay-icon"></i>
+                        <p>اضغط لتشغيل البث</p>
+                    </div>
+                </div>
+                <!-- Toast -->
+                <div id="player-toast" class="player-toast hidden"><span id="player-toast-text"></span></div>
+                <!-- Players -->
+                <div id="video-player"></div>
+                <div id="iframe-player-container" class="hidden">
+                    <iframe id="iframe-player" src="" allowfullscreen allow="autoplay; encrypted-media; fullscreen"></iframe>
+                </div>
+                <!-- No stream -->
+                <div id="no-stream-placeholder" class="no-stream hidden">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <p>البث غير متوفر حالياً، يبدأ قبل المباراة بـ 15 دقيقة</p>
+                </div>
             </div>
+
+            <!-- Red Fallback Button -->
+            <div id="external-stream-container" class="ext-stream-wrap">
+                <a id="external-stream-link" href="#" target="_blank" rel="noreferrer" class="ext-stream-btn">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    <span>شاشة سوداء؟ اضغط هنا للمشاهدة مباشرة</span>
+                </a>
+            </div>
+
+            <!-- Match Info -->
+            <div class="match-info-strip">
+                <div class="mis-teams">
+                    <span id="footer-team-a">-</span>
+                    <span class="mis-vs">VS</span>
+                    <span id="footer-team-b">-</span>
+                </div>
+                <div class="mis-details">
+                    <span id="footer-channel"></span>
+                    <span id="footer-status"></span>
+                </div>
+            </div>
+
+            <!-- Ad Banner -->
+            <div class="ad-strip">
+                <span class="ad-strip-label">إعلان</span>
+                <div class="ad-cards">
+                    <div class="ad-card">
+                        <i class="fa-solid fa-star"></i>
+                        <div class="ad-card-text">
+                            <strong>العب وتوقع نتيجة المباراة واربح 130$</strong>
+                            <small>رمز الترقية: YALLALIVE</small>
+                        </div>
+                        <a href="https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039" target="_blank" class="ad-card-btn">سجل الآن</a>
+                    </div>
+                </div>
+            </div>
+
         </div>
-    </header>
+    </section>
+</main>
 
-    <main class="container main-content">
-        <!-- Hero -->
-        <section class="hero">
-            <h1>جدول مباريات اليوم والبث المباشر</h1>
-            <p>شاهد أهم المباريات والدوريات العالمية والعربية مجاناً بجودة عالية.</p>
-        </section>
+<!-- ══ FOOTER ══ -->
+<footer class="site-footer">
+    <p>© 2026 يلا شوت — الموقع دليل رياضي للبث المباشر</p>
+</footer>
 
-        <!-- Matches Section -->
-        <section class="matches-section">
-            <div class="section-header">
-                <h2><i class="fa-regular fa-calendar-days icon-color"></i> جدول المباريات</h2>
-                <span id="current-date" class="date-badge"></span>
-            </div>
-
-            <!-- Date Tabs -->
-            <div class="date-tabs">
-                <button class="date-tab-btn" id="tab-yesterday" data-tab="yesterday">الأمس</button>
-                <button class="date-tab-btn active" id="tab-today" data-tab="today">اليوم</button>
-                <button class="date-tab-btn" id="tab-tomorrow" data-tab="tomorrow">غداً</button>
-            </div>
-
-            <div id="loading-spinner" class="loading-container">
-                <div class="spinner"></div>
-                <p>جاري تحميل المباريات...</p>
-            </div>
-
-            <div id="no-matches" class="no-matches hidden">
-                <i class="fa-regular fa-circle-xmark no-matches-icon"></i>
-                <h3>لا توجد مباريات مجدولة اليوم</h3>
-                <p>يرجى العودة لاحقاً أو التحقق من جدول الغد.</p>
-            </div>
-
-            <div id="matches-container" class="matches-grid"></div>
-        </section>
-
-        <!-- Video Player -->
-        <section id="player-section" class="player-section hidden">
-            <div class="player-wrapper card">
-                <div class="player-header">
-                    <h3 id="player-title">بث مباشر للمباراة</h3>
-                    <div class="player-header-actions">
-                        <button id="fullscreen-player" class="fullscreen-btn"><i class="fa-solid fa-expand"></i> <span class="fs-label">ملء الشاشة</span></button>
-                        <button id="close-player" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                </div>
-
-                <!-- Sources tabs -->
-                <div id="sources-tabs" class="sources-tabs hidden"></div>
-
-                <div class="video-container">
-                    <!-- Overlay Ad -->
-                    <div id="player-overlay-ad" class="player-overlay-ad hidden">
-                        <button id="close-overlay-btn" class="close-overlay-btn"><i class="fa-solid fa-xmark"></i> تخطي</button>
-                        <div class="overlay-ad-content">
-                            <i class="fa-solid fa-circle-play overlay-play-icon"></i>
-                            <h4>اضغط لتشغيل البث المباشر</h4>
-                            <p>البث متوافق مع جميع الأجهزة بدون تقطيع</p>
-                        </div>
-                    </div>
-
-                    <div id="player-toast" class="player-toast hidden">
-                        <span id="player-toast-text">جاري الانتقال للسيرفر البديل...</span>
-                    </div>
-                    <div id="video-player"></div>
-                    <div id="iframe-player-container" class="hidden">
-                        <iframe id="iframe-player" src="" allowfullscreen scrolling="no" allow="autoplay; encrypted-media; fullscreen"></iframe>
-                    </div>
-                    <div id="no-stream-placeholder" class="no-stream-placeholder hidden">
-                        <div class="placeholder-content">
-                            <i class="fa-solid fa-circle-exclamation error-icon"></i>
-                            <h3>البث المباشر غير متوفر حالياً</h3>
-                            <p>يبدأ البث قبل انطلاق المباراة بـ 15 دقيقة.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Red fallback button -->
-                <div id="external-stream-container" class="external-stream-container">
-                    <a id="external-stream-link" href="#" target="_blank" rel="noreferrer" class="red-fallback-btn">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        <span>شاشة سوداء؟ اضغط هنا للمشاهدة في صفحة خارجية</span>
-                    </a>
-                </div>
-
-                <div class="player-footer">
-                    <div class="match-info-bar">
-                        <div class="match-teams-info">
-                            <span id="footer-team-a">فريق أ</span>
-                            <span class="vs-badge">VS</span>
-                            <span id="footer-team-b">فريق ب</span>
-                        </div>
-                        <div id="footer-match-details" class="footer-match-details">
-                            <span id="footer-channel"><i class="fa-solid fa-tv"></i> -</span>
-                            <span id="footer-status"><i class="fa-solid fa-circle-dot"></i> -</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Ad banners -->
-                <div class="ad-banner-container">
-                    <span class="ad-label">إعلانات ممولة</span>
-                    <div class="banners-flex-container">
-                        <div id="banner-ad-container-1" class="banner-ad-slot">
-                            <div class="simulated-ad">
-                                <div class="ad-icon"><i class="fa-solid fa-bullhorn"></i></div>
-                                <div class="ad-text">
-                                    <strong>توقع نتيجة المباراة واربح مكافأة 130$ مع 1XBET!</strong>
-                                    <p>الرمز الترويجي: <code>YALLALIVE</code></p>
-                                </div>
-                                <a href="https://1xbet.com" target="_blank" class="ad-btn">سجل الآن <i class="fa-solid fa-arrow-left"></i></a>
-                            </div>
-                        </div>
-                        <div id="banner-ad-container-2" class="banner-ad-slot">
-                            <div class="simulated-ad">
-                                <div class="ad-icon"><i class="fa-solid fa-gift"></i></div>
-                                <div class="ad-text">
-                                    <strong>سحب فوري وهدايا يومية للمشتركين!</strong>
-                                    <p>اضغط هنا وابدأ في جمع النقاط مجاناً.</p>
-                                </div>
-                                <a href="https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039" target="_blank" class="ad-btn">اشترك الآن <i class="fa-solid fa-arrow-left"></i></a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer class="footer">
-        <div class="container footer-content">
-            <p>© 2026 YallaShoot Today. الموقع دليل رياضي للبث المباشر ولا يستضيف ملفات فيديو على خوادمه.</p>
-        </div>
-    </footer>
-
-    <script src="app.js?v=2.0"></script>
+<script src="app.js?v=3.0"></script>
 </body>
 </html>

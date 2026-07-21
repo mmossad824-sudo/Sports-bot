@@ -58,115 +58,158 @@ function getCairoDateString(offsetDays = 0) {
     const d = new Date();
     const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
     const cairoTime = new Date(utc + (3600000 * 3));
-    
-    if (offsetDays !== 0) {
-        cairoTime.setDate(cairoTime.getDate() + offsetDays);
-    }
-    
-    const year = cairoTime.getFullYear();
+
+    if (offsetDays !== 0) cairoTime.setDate(cairoTime.getDate() + offsetDays);
+
+    const year  = cairoTime.getFullYear();
     const month = String(cairoTime.getMonth() + 1).padStart(2, '0');
-    const day = String(cairoTime.getDate()).padStart(2, '0');
+    const day   = String(cairoTime.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
 
-// Filter matches array based on the active tab
 function filterMatchesByTab(matches, tab) {
     const targetDate = getCairoDateString(tab === 'yesterday' ? -1 : (tab === 'tomorrow' ? 1 : 0));
-    return matches.filter(m => {
-        if (!m.match_date) {
-            // Default to today if date is missing
-            return tab === 'today';
-        }
-        return m.match_date === targetDate;
-    });
+    return matches.filter(m => !m.match_date ? tab === 'today' : m.match_date === targetDate);
 }
 
-// Update the display badge for current selected date
 function updateDateBadge() {
     const badge = document.getElementById('current-date');
+    const titleEl = document.getElementById('page-title-text');
     if (!badge) return;
-    
     const d = new Date();
     const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
     const cairoTime = new Date(utc + (3600000 * 3));
-    
     let offset = 0;
     if (activeTab === 'yesterday') offset = -1;
-    if (activeTab === 'tomorrow') offset = 1;
-    
+    if (activeTab === 'tomorrow')  offset = 1;
     cairoTime.setDate(cairoTime.getDate() + offset);
-    
-    badge.innerText = cairoTime.toLocaleDateString('ar-EG', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
+    const dateStr = cairoTime.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    badge.innerText = dateStr;
+    if (titleEl) {
+        const labels = { today: 'مباريات اليوم بث مباشر', yesterday: 'مباريات الأمس', tomorrow: 'مباريات الغد' };
+        titleEl.innerText = labels[activeTab] || 'مباريات اليوم';
+    }
 }
 
-// Render filtered matches
 function displayMatchesForActiveTab() {
     const container = document.getElementById('matches-container');
     const noMatches = document.getElementById('no-matches');
-    
-    const filtered = filterMatchesByTab(allMatches, activeTab);
-    
+    const filtered  = filterMatchesByTab(allMatches, activeTab);
     if (filtered.length === 0) {
         noMatches.classList.remove('hidden');
         container.innerHTML = '';
         return;
     }
-    
     noMatches.classList.add('hidden');
     renderMatches(filtered);
 }
 
+
 // Initialize Page
 document.addEventListener('DOMContentLoaded', () => {
-    // Set current date badge
     updateDateBadge();
-    
-    // Setup Tab click handlers
-    document.querySelectorAll('.date-tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.date-tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            activeTab = btn.getAttribute('data-tab');
+
+    // ── Date strip tabs ──────────────────────────────────────────────────────
+    document.querySelectorAll('.ds-btn, .snav-tab').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const tab = btn.getAttribute('data-tab');
+            if (!tab) return;
+            document.querySelectorAll('.ds-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.ds-btn[data-tab="' + tab + '"]').forEach(b => b.classList.add('active'));
+            document.querySelectorAll('.snav-tab').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.snav-tab[data-tab="' + tab + '"]').forEach(b => b.classList.add('active'));
+            activeTab = tab;
             updateDateBadge();
             displayMatchesForActiveTab();
+            closeSideNav();
         });
     });
-    
-    // Load Matches
+
+    // ── Hamburger menu ───────────────────────────────────────────────────────
+    const menuBtn    = document.getElementById('hdr-menu-btn');
+    const sideNav    = document.getElementById('side-nav');
+    const navOverlay = document.getElementById('nav-overlay');
+    const navClose   = document.getElementById('side-nav-close');
+
+    function openSideNav() {
+        sideNav.classList.remove('hidden');
+        sideNav.classList.add('open');
+        navOverlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    window.closeSideNav = function() {
+        sideNav.classList.remove('open');
+        navOverlay.classList.add('hidden');
+        document.body.style.overflow = '';
+        setTimeout(() => { if (!sideNav.classList.contains('open')) sideNav.classList.add('hidden'); }, 300);
+    };
+    if (menuBtn) menuBtn.addEventListener('click', openSideNav);
+    if (navClose) navClose.addEventListener('click', closeSideNav);
+    if (navOverlay) navOverlay.addEventListener('click', closeSideNav);
+
+    // ── Search ───────────────────────────────────────────────────────────────
+    const searchToggle = document.getElementById('search-toggle-btn');
+    const searchBar    = document.getElementById('hdr-search-bar');
+    const searchInput  = document.getElementById('search-input');
+    const searchClear  = document.getElementById('search-clear-btn');
+
+    if (searchToggle) {
+        searchToggle.addEventListener('click', () => {
+            searchBar.classList.toggle('hidden');
+            if (!searchBar.classList.contains('hidden')) searchInput.focus();
+        });
+    }
+    if (searchClear) {
+        searchClear.addEventListener('click', () => {
+            searchInput.value = '';
+            searchBar.classList.add('hidden');
+            displayMatchesForActiveTab();
+        });
+    }
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            const q = searchInput.value.trim().toLowerCase();
+            if (!q) { displayMatchesForActiveTab(); return; }
+            const filtered = allMatches.filter(m =>
+                m.teamA.toLowerCase().includes(q) ||
+                m.teamB.toLowerCase().includes(q) ||
+                m.tournament.toLowerCase().includes(q)
+            );
+            if (filtered.length === 0) {
+                document.getElementById('no-matches').classList.remove('hidden');
+                document.getElementById('matches-container').innerHTML = '';
+            } else {
+                document.getElementById('no-matches').classList.add('hidden');
+                renderMatches(filtered);
+            }
+        });
+    }
+
+    // ── Load data ────────────────────────────────────────────────────────────
     fetchMatches();
-    
-    // Auto-reload every 60 seconds
     setInterval(fetchMatches, 60000);
-    
-    // Setup Ad Banner Auto-Refresh (under video player only)
-    startAdRefreshTimer();
-    
-    // Load Social Bar Ad
+
+    // ── Ads ──────────────────────────────────────────────────────────────────
     loadSocialBar();
-    
-    // DO NOT init popunder on page load — only fire on match click (see click-trap modal)
-    
-    // Close Player Event
-    document.getElementById('close-player').addEventListener('click', closePlayer);
-    
-    // Fullscreen Player Event
+    // No popunder on page load — only on match click via click-trap modal
+
+    // ── Close / Fullscreen player ─────────────────────────────────────────────
+    const closeBtn = document.getElementById('close-player');
+    if (closeBtn) closeBtn.addEventListener('click', closePlayer);
+
     const fsBtn = document.getElementById('fullscreen-player');
     if (fsBtn) fsBtn.addEventListener('click', toggleWrapperFullscreen);
-    
-    // Overlay Ad close button
-    const overlayAd = document.getElementById('player-overlay-ad');
-    const closeOverlayBtn = document.getElementById('close-overlay-btn');
-    if (closeOverlayBtn) {
-        closeOverlayBtn.addEventListener('click', (e) => {
+
+    // ── Overlay ad ───────────────────────────────────────────────────────────
+    const overlayAd     = document.getElementById('player-overlay-ad');
+    const closeOverlay  = document.getElementById('close-overlay-btn');
+    if (closeOverlay) {
+        closeOverlay.addEventListener('click', (e) => {
             e.stopPropagation();
             overlayAd.classList.add('hidden');
-            const videoEl = document.getElementById('native-video-player');
-            if (videoEl) videoEl.play().catch(() => {});
+            const v = document.getElementById('native-video-player');
+            if (v) v.play().catch(() => {});
         });
     }
     if (overlayAd) {
@@ -175,28 +218,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = ADS_CONFIG.popunder.directLinkUrl;
             if (url) window.open(url, '_blank');
             overlayAd.classList.add('hidden');
-            const videoEl = document.getElementById('native-video-player');
-            if (videoEl) videoEl.play().catch(() => {});
+            const v = document.getElementById('native-video-player');
+            if (v) v.play().catch(() => {});
         });
     }
 
-    // Red fallback button — stop propagation so no extra ad fires
+    // ── External link ─────────────────────────────────────────────────────────
     const extLink = document.getElementById('external-stream-link');
     if (extLink) extLink.addEventListener('click', (e) => e.stopPropagation());
 
-    // ── Click-Trap Modal Wiring ────────────────────────────────────────────
-    const adClickBtn = document.getElementById('ad-click-btn');
-    const adModal = document.getElementById('ad-click-modal');
+    // ── Click-Trap Modal ─────────────────────────────────────────────────────
+    const adClickBtn  = document.getElementById('ad-click-btn');
+    const adModal     = document.getElementById('ad-click-modal');
     const adModalSkip = document.getElementById('ad-modal-skip');
 
     if (adClickBtn && adModal) {
         adClickBtn.addEventListener('click', () => {
             clickTrapClicks++;
-            // Open the ad URL on each click
             const adUrl = ADS_CONFIG.popunder.directLinkUrl;
             if (adUrl) window.open(adUrl, '_blank');
 
-            // Update dot
             const dot = document.getElementById(`ad-dot-${clickTrapClicks}`);
             if (dot) dot.classList.add('done');
 
@@ -207,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (neededEl)  neededEl.textContent   = remaining > 0 ? remaining : '0';
 
             if (clickTrapClicks >= CLICK_TRAP_TOTAL) {
-                // Done! Close modal and open stream
                 adModal.classList.add('hidden');
                 if (clickTrapMatchId) _loadMatchStream(clickTrapMatchId);
             } else {
@@ -216,10 +256,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
     if (adModalSkip) {
         adModalSkip.addEventListener('click', () => {
-            // Skip opens ad + closes modal
             const adUrl = ADS_CONFIG.popunder.directLinkUrl;
             if (adUrl) window.open(adUrl, '_blank');
             if (adModal) adModal.classList.add('hidden');
@@ -227,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
 
 // Fetch Matches from FastAPI Backend
 async function fetchMatches() {
@@ -328,60 +365,60 @@ function formatMatchTime(rawTime) {
     }
 }
 
-// Render Individual Match Card
+// Render Individual Match Card — thumbnail style like yallashoot.video
 function renderMatchCard(match) {
-    let statusClass = 'upcoming';
-    let statusText = match.status;
-    let pulseHtml = '';
-    let watchBtnText = 'شاهد الآن';
-    
-    if (match.status === 'جارية الآن') {
-        statusClass = 'live';
-        statusText = 'بث مباشر';
-        pulseHtml = '<span class="status-indicator"></span>';
-    } else if (match.status === 'انتهت') {
-        statusClass = 'finished';
-        statusText = 'انتهت';
-        watchBtnText = 'شاهد الملخص والاهداف الآن';
-    }
-    
-    // Handle logo fallbacks
+    const isLive     = match.status === 'جارية الآن' || match.status.includes('الشوط');
+    const isFinished = match.status === 'انتهت';
+    const isHalf     = match.status.includes('بين الشوطين');
+
     const logoA = match.logoA || 'https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png';
     const logoB = match.logoB || 'https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png';
-    
-    // Escaping single quotes in match.id to prevent inline click handler syntax errors
-    const escapedMatchId = match.id.replace(/'/g, "\\'");
-    
+    const escapedId = match.id.replace(/'/g, "\\'");
+
+    const scoreA = (match.scoreA !== null && match.scoreA !== undefined && match.scoreA !== '') ? match.scoreA : '-';
+    const scoreB = (match.scoreB !== null && match.scoreB !== undefined && match.scoreB !== '') ? match.scoreB : '-';
+
+    let badgeHtml = '';
+    if (isLive || isHalf) {
+        badgeHtml = `<span class="mc-live-badge"><i class="fa-solid fa-circle"></i> مباشر</span>`;
+    } else if (isFinished) {
+        badgeHtml = `<span class="mc-finished-badge">انتهت</span>`;
+    } else {
+        badgeHtml = `<span class="mc-upcoming-badge">${match.time || 'قريباً'}</span>`;
+    }
+
+    const watchText = isFinished
+        ? `<i class="fa-solid fa-film"></i> الملخص والأهداف`
+        : `<i class="fa-solid fa-circle-play"></i> شاهد الآن`;
+    const watchClass = isFinished ? 'mc-watch-btn finished' : 'mc-watch-btn';
+
     return `
-        <div class="match-card" onclick="openMatchStream('${escapedMatchId}')">
-            <div class="match-top">
-                <span class="match-badge ${statusClass}">${pulseHtml} ${statusText}</span>
-                <span class="match-round">${match.round || ''}</span>
+        <div class="match-card" onclick="openMatchStream('${escapedId}')">
+            <div class="mc-thumb">
+                <div class="mc-thumb-inner">
+                    <img class="mc-team-img" src="${logoA}" alt="${match.teamA}" loading="lazy"
+                        onerror="this.src='https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png'">
+                    <div class="mc-vs-score">
+                        <div class="mc-score">${scoreA} - ${scoreB}</div>
+                        <div class="mc-time">${match.time || ''}</div>
+                    </div>
+                    <img class="mc-team-img" src="${logoB}" alt="${match.teamB}" loading="lazy"
+                        onerror="this.src='https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png'">
+                </div>
+                ${badgeHtml}
             </div>
-            <div class="match-teams">
-                <div class="team">
-                    <img class="team-logo" src="${logoA}" alt="${match.teamA}" onerror="this.src='https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png'">
-                    <span class="team-name">${match.teamA}</span>
-                </div>
-                <div class="match-score-center">
-                    <div class="score-display">${match.scoreA} - ${match.scoreB}</div>
-                    <div class="match-time">${formatMatchTime(match.time)}</div>
-                </div>
-                <div class="team">
-                    <img class="team-logo" src="${logoB}" alt="${match.teamB}" onerror="this.src='https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png'">
-                    <span class="team-name">${match.teamB}</span>
-                </div>
-            </div>
-            <div class="match-bottom">
-                <div class="channel-info">
+            <div class="mc-body">
+                <div class="mc-teams-text">${match.teamA} ضد ${match.teamB}</div>
+                <div class="mc-meta">
                     <i class="fa-solid fa-tv"></i>
-                    <span>${match.channel || 'صوتية/غير معروفة'}</span>
+                    <span>${match.channel || match.tournament || ''}</span>
                 </div>
-                <button class="watch-now-btn">${watchBtnText} <i class="fa-solid fa-circle-play"></i></button>
             </div>
+            <button class="${watchClass}">${watchText}</button>
         </div>
     `;
 }
+
 
 // Open Live Stream Player — shows click-trap modal first
 async function openMatchStream(matchId) {
@@ -909,43 +946,30 @@ function hidePlayerToast() {
 // Close and clean up video player
 function closePlayer() {
     const playerSection = document.getElementById('player-section');
-    const iframe = document.getElementById('iframe-player');
+    const iframe        = document.getElementById('iframe-player');
     const videoPlayerDiv = document.getElementById('video-player');
     const tabsContainer = document.getElementById('sources-tabs');
-    
-    // Clear active match and stop polling
+
     activeMatchId = null;
     activeSourceIndex = -1;
     currentSources = [];
     retryCount = 0;
     stopBackgroundPolling();
-    
-    // Hide section & overlay
+
     playerSection.classList.add('hidden');
-    tabsContainer.classList.add('hidden');
+    if (tabsContainer) tabsContainer.classList.add('hidden');
     hidePlayerToast();
-    
+
     const overlayAd = document.getElementById('player-overlay-ad');
     if (overlayAd) overlayAd.classList.add('hidden');
 
-    const extContainer = document.getElementById('external-stream-container');
-    if (extContainer) extContainer.classList.add('hidden');
-    
-    // Reset document title to default
-    document.title = "يلا شوت توداي - جدول المباريات والبث المباشر";
-    
-    // Stop iframe stream
-    iframe.src = '';
-    
-    // Destroy HLS Instance
-    if (hlsPlayer) {
-        hlsPlayer.destroy();
-        hlsPlayer = null;
-    }
-    
-    // Clear inner html of player div
-    videoPlayerDiv.innerHTML = '';
+    document.title = 'يلا شوت - بث مباشر مباريات اليوم';
+
+    if (iframe) iframe.src = '';
+    if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
+    if (videoPlayerDiv) videoPlayerDiv.innerHTML = '';
 }
+
 
 // Rotating Direct Link Offers under Video Player (High CPM conversion)
 const DIRECT_LINK_OFFERS = [
@@ -1067,31 +1091,20 @@ function loadSocialBar() {
     }
 }
 
-// Toggle custom wrapper fullscreen (including video + ads)
+// Toggle fullscreen on player-box
 function toggleWrapperFullscreen() {
-    const wrapper = document.querySelector('.player-wrapper');
+    const box = document.querySelector('.player-box');
     const fsBtn = document.getElementById('fullscreen-player');
-    
+    if (!box) return;
     if (!document.fullscreenElement) {
-        const req = wrapper.requestFullscreen || wrapper.webkitRequestFullscreen || wrapper.msRequestFullscreen;
-        if (req) {
-            req.call(wrapper).then(() => {
-                if (fsBtn) fsBtn.innerHTML = '<i class="fa-solid fa-compress"></i> إلغاء التكبير';
-            }).catch(err => {
-                console.log("Fullscreen request rejected:", err);
-            });
-        }
+        const req = box.requestFullscreen || box.webkitRequestFullscreen || box.msRequestFullscreen;
+        if (req) req.call(box).then(() => { if(fsBtn) fsBtn.innerHTML='<i class="fa-solid fa-compress"></i>'; }).catch(()=>{});
     } else {
         const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-        if (exit) {
-            exit.call(document).then(() => {
-                if (fsBtn) fsBtn.innerHTML = '<i class="fa-solid fa-expand"></i> ملء الشاشة';
-            }).catch(err => {
-                console.log("Exit fullscreen failed:", err);
-            });
-        }
+        if (exit) exit.call(document).then(() => { if(fsBtn) fsBtn.innerHTML='<i class="fa-solid fa-expand"></i>'; }).catch(()=>{});
     }
 }
+
 
 // Listen for fullscreen change event to update the button interface
 document.addEventListener('fullscreenchange', () => {
