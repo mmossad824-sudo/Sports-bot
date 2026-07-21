@@ -137,8 +137,8 @@ TEAM_LOGOS_FALLBACK = {
     "الهلال": "https://media.api-sports.io/football/teams/2939.png",
     "النصر": "https://media.api-sports.io/football/teams/2934.png",
     "الاتحاد": "https://media.api-sports.io/football/teams/2932.png",
-    "الأهلي": "https://media.api-sports.io/football/teams/1027.png",
-    "الزمالك": "https://media.api-sports.io/football/teams/1028.png",
+    "الأهلي": "https://r2.thesportsdb.com/images/media/team/badge/x8753q1751421890.png",
+    "الزمالك": "https://r2.thesportsdb.com/images/media/team/badge/tgekj81580930027.png",
     "بيراميدز": "https://media.api-sports.io/football/teams/3034.png",
 }
 
