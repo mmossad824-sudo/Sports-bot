@@ -24,6 +24,7 @@ TG_BOT_TOKEN   = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TG_CHANNEL_ID  = os.getenv("TELEGRAM_CHANNEL_ID", "@yalla_shoot_today_Group")
 WEBSITE_URL    = os.getenv("WEBSITE_URL",    "https://yalla-shoot-today.vercel.app")
 HF_API_URL     = os.getenv("HF_API_URL",     "https://mmossad824-sports-bot.hf.space")
+YT_CHANNEL_URL = os.getenv("YT_CHANNEL_URL", "https://youtube.com/@YallaShootTodayOfficial")
 FONT_PATH      = "Cairo-Bold.ttf"
 FONT_URL       = "https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hAc5W1Q.ttf"
 SPONSOR_URL    = "https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039"
@@ -670,10 +671,12 @@ def task_daily_schedule(state: dict):
     # AR footer
     lines_ar.append(f"\n🔴 بث مباشر بجودة HD بدون تقطيع:\n{WEBSITE_URL}")
     lines_ar.append(f"📱 اشترك في قناة التليجرام للتنبيهات الفورية!")
+    lines_ar.append(f"▶️ تابع قناتنا على يوتيوب: {YT_CHANNEL_URL}")
     lines_ar.append(f"\n#يلا_شوت #بث_مباشر #مباريات_اليوم #كورة_مباشرة")
 
     # EN footer
     lines_en.append(f"\n🔴 Watch HD Live Streams:\n{WEBSITE_URL}")
+    lines_en.append(f"▶️ Subscribe to YouTube: {YT_CHANNEL_URL}")
     lines_en.append(f"#Football #LiveStream #Soccer #YallaShoot #LiveFootball")
 
     text_ar = "\n".join(lines_ar)
