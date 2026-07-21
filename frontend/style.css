@@ -727,28 +727,40 @@ button { cursor: pointer; font-family: var(--font); -webkit-tap-highlight-color:
 .chat-hdr h3 { font-size: 1rem; font-weight: 800; }
 #disqus_thread { min-height: 200px; }
 
-/* Floating TG */
-.floating-tg-btn {
+/* Floating Socials */
+.floating-socials {
     position: fixed;
     bottom: 20px;
     left: 20px;
-    background: #0088cc;
-    color: white;
-    padding: 10px 18px;
-    border-radius: 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 1000;
+}
+.floating-btn {
     display: flex;
     align-items: center;
     gap: 8px;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 50px;
     font-weight: 800;
     font-size: 0.9rem;
-    box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
-    z-index: 1000;
-    transition: transform 0.2s;
-    animation: tgBounce 2s infinite;
     text-decoration: none;
+    transition: transform 0.2s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
-.floating-tg-btn i { font-size: 1.2rem; }
-.floating-tg-btn:hover { transform: scale(1.05); color: white; }
+.floating-btn i { font-size: 1.2rem; }
+.floating-btn:hover { transform: scale(1.05); color: white; }
+
+.tg-btn {
+    background: #0088cc;
+    animation: tgBounce 2s infinite;
+}
+.fb-btn {
+    background: #1877f2;
+}
+
 @keyframes tgBounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-8px); }
@@ -875,12 +887,19 @@ button { cursor: pointer; font-family: var(--font); -webkit-tap-highlight-color:
 ══════════════════════════════════════════════════ */
 .site-footer {
     text-align: center;
-    padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0));
+    padding: 24px 16px calc(120px + env(safe-area-inset-bottom, 0)); /* Space for floating buttons */
     border-top: 1px solid var(--border);
     color: var(--text3);
     font-size: 0.78rem;
     margin-top: 20px;
 }
+.footer-socials {
+    display: flex; justify-content: center; gap: 16px; margin-bottom: 16px;
+}
+.footer-socials a {
+    color: var(--text2); font-size: 1.5rem; transition: color 0.2s;
+}
+.footer-socials a:hover { color: var(--accent); }
 
 /* ══════════════════════════════════════════════════
    FULLSCREEN PLAYER MODE
