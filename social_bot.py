@@ -120,21 +120,55 @@ def download_font():
             logger.error(f"Font download failed: {e}")
 
 
-def get_logo(url: str, size=(200, 200)):
-    """Download team logo, return PIL Image or None."""
-    if not url or not url.startswith("http"):
-        return None
-    try:
-        from PIL import Image
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        r = requests.get(url, headers=headers, timeout=10)
-        if r.status_code != 200:
-            return None
-        logo = Image.open(BytesIO(r.content)).convert("RGBA")
-        logo = logo.resize(size, Image.LANCZOS)
-        return logo
-    except Exception:
-        return None
+# Direct PNG logos mapping for top clubs & teams as fallback
+TEAM_LOGOS_FALLBACK = {
+    "ريال مدريد": "https://media.api-sports.io/football/teams/541.png",
+    "برشلونة": "https://media.api-sports.io/football/teams/529.png",
+    "ليفربول": "https://media.api-sports.io/football/teams/40.png",
+    "مانشستر سيتي": "https://media.api-sports.io/football/teams/50.png",
+    "مانشستر يونايتد": "https://media.api-sports.io/football/teams/33.png",
+    "أرسنال": "https://media.api-sports.io/football/teams/42.png",
+    "تشيلسي": "https://media.api-sports.io/football/teams/49.png",
+    "بايرن ميونخ": "https://media.api-sports.io/football/teams/157.png",
+    "باريس سان جيرمان": "https://media.api-sports.io/football/teams/85.png",
+    "يوفنتوس": "https://media.api-sports.io/football/teams/496.png",
+    "إنتر ميلان": "https://media.api-sports.io/football/teams/505.png",
+    "إي سي ميلان": "https://media.api-sports.io/football/teams/489.png",
+    "الهلال": "https://media.api-sports.io/football/teams/2939.png",
+    "النصر": "https://media.api-sports.io/football/teams/2934.png",
+    "الاتحاد": "https://media.api-sports.io/football/teams/2932.png",
+    "الأهلي": "https://media.api-sports.io/football/teams/1027.png",
+    "الزمالك": "https://media.api-sports.io/football/teams/1028.png",
+    "بيراميدز": "https://media.api-sports.io/football/teams/3034.png",
+}
+
+
+def get_logo(url: str, team_name: str = "", size=(200, 200)):
+    """Download team logo, return PIL Image or None with automatic fallback support."""
+    urls_to_try = []
+    if url and url.startswith("http") and not url.endswith(".svg"):
+        urls_to_try.append(url)
+
+    # Check fallback map
+    for team_key, fallback_url in TEAM_LOGOS_FALLBACK.items():
+        if team_key in team_name:
+            urls_to_try.append(fallback_url)
+            break
+
+    from PIL import Image
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+    for logo_url in urls_to_try:
+        try:
+            r = requests.get(logo_url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                logo = Image.open(BytesIO(r.content)).convert("RGBA")
+                logo = logo.resize(size, Image.LANCZOS)
+                return logo
+        except Exception:
+            continue
+
+    return None
 
 
 def render_arabic(text: str) -> str:
@@ -203,8 +237,8 @@ def create_match_image(match: dict, label: str = "مباشر", size: str = "fb")
 
         # ── Team logos ────────────────────────────────────────────────────────
         logo_size = (200, 200) if size == "fb" else (180, 180)
-        logo_a = get_logo(match.get("logoA", ""), logo_size)
-        logo_b = get_logo(match.get("logoB", ""), logo_size)
+        logo_a = get_logo(match.get("logoA", ""), team_name=match.get("teamA", ""), size=logo_size)
+        logo_b = get_logo(match.get("logoB", ""), team_name=match.get("teamB", ""), size=logo_size)
 
         logo_a_x = W // 4 - logo_size[0] // 2
         logo_b_x = 3 * W // 4 - logo_size[1] // 2
