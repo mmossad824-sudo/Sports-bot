@@ -126,7 +126,10 @@ def get_logo(url: str, size=(200, 200)):
         return None
     try:
         from PIL import Image
-        r = requests.get(url, timeout=10)
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code != 200:
+            return None
         logo = Image.open(BytesIO(r.content)).convert("RGBA")
         logo = logo.resize(size, Image.LANCZOS)
         return logo
@@ -187,13 +190,12 @@ def create_match_image(match: dict, label: str = "مباشر", size: str = "fb")
 
         # ── Tournament banner ─────────────────────────────────────────────────
         tour = match.get("tournament", "Football")
-        tour_rendered = render_arabic(f"{get_tour_emoji(tour)}  {tour}")
+        tour_txt = f"{get_tour_emoji(tour)}  {tour}"
         # Gradient banner
         for y in range(100):
-            alpha = int(255 * (1 - abs(y - 50) / 50) * 0.9)
             clr = (16, 185, 129)
             draw.line([(0, y), (W, y)], fill=clr)
-        draw.text((W // 2, 50), tour_rendered, font=f_medium, fill="#ffffff", anchor="mm")
+        draw.text((W // 2, 50), tour_txt, font=f_medium, fill="#ffffff", anchor="mm", direction="rtl", language="ar")
 
         # ── Center divider line ───────────────────────────────────────────────
         mid_y = H // 2
@@ -211,7 +213,6 @@ def create_match_image(match: dict, label: str = "مباشر", size: str = "fb")
         if logo_a:
             img.paste(logo_a, (logo_a_x, logo_y), logo_a)
         else:
-            # Draw placeholder circle
             draw.ellipse([(logo_a_x, logo_y), (logo_a_x + logo_size[0], logo_y + logo_size[1])],
                          outline="#10b981", width=3)
             draw.text((logo_a_x + logo_size[0]//2, logo_y + logo_size[1]//2),
@@ -226,18 +227,16 @@ def create_match_image(match: dict, label: str = "مباشر", size: str = "fb")
                       "⚽", font=f_large, anchor="mm")
 
         # ── Team names ────────────────────────────────────────────────────────
-        name_a = render_arabic(match.get("teamA", "Team A"))
-        name_b = render_arabic(match.get("teamB", "Team B"))
+        name_a = match.get("teamA", "Team A")
+        name_b = match.get("teamB", "Team B")
         name_y = logo_y + logo_size[1] + 30
-        draw.text((W // 4, name_y), name_a, font=f_large, fill="#f9fafb", anchor="mm")
-        draw.text((3 * W // 4, name_y), name_b, font=f_large, fill="#f9fafb", anchor="mm")
+        draw.text((W // 4, name_y), name_a, font=f_large, fill="#f9fafb", anchor="mm", direction="rtl", language="ar")
+        draw.text((3 * W // 4, name_y), name_b, font=f_large, fill="#f9fafb", anchor="mm", direction="rtl", language="ar")
 
         # ── VS badge ──────────────────────────────────────────────────────────
         vs_r = 65
         vs_cx, vs_cy = W // 2, mid_y - 10
-        # Outer glow
         for offset in range(8, 0, -1):
-            alpha = int(255 * (1 - offset / 8) * 0.3)
             draw.ellipse([
                 (vs_cx - vs_r - offset, vs_cy - vs_r - offset),
                 (vs_cx + vs_r + offset, vs_cy + vs_r + offset)
@@ -256,21 +255,19 @@ def create_match_image(match: dict, label: str = "مباشر", size: str = "fb")
         # ── Match time ────────────────────────────────────────────────────────
         time_str = match.get("time", "")
         if time_str:
-            time_rendered = render_arabic(f"⏰  {time_str}  بتوقيت القاهرة")
-            draw.text((W // 2, H - 85), time_rendered, font=f_small, fill="#9ca3af", anchor="mm")
+            time_txt = f"⏰  {time_str}  بتوقيت القاهرة"
+            draw.text((W // 2, H - 85), time_txt, font=f_small, fill="#9ca3af", anchor="mm", direction="rtl", language="ar")
 
         # ── LIVE / Label badge ────────────────────────────────────────────────
-        label_txt = render_arabic(label)
         badge_w = 240
         draw.rounded_rectangle([
             (W // 2 - badge_w // 2, H - 160),
             (W // 2 + badge_w // 2, H - 110)
         ], radius=25, fill="#ef4444" if "مباشر" in label or "LIVE" in label else "#10b981")
-        draw.text((W // 2, H - 135), label_txt, font=f_medium, fill="#fff", anchor="mm")
+        draw.text((W // 2, H - 135), label, font=f_medium, fill="#fff", anchor="mm", direction="rtl", language="ar")
 
         # ── Website watermark ─────────────────────────────────────────────────
-        site_txt = render_arabic("yalla-shoot-today.vercel.app")
-        draw.text((W // 2, H - 28), site_txt, font=f_small, fill="#374151", anchor="mm")
+        draw.text((W // 2, H - 28), "yalla-shoot-today.vercel.app", font=f_small, fill="#4b5563", anchor="mm")
 
         path = f"post_{match.get('id', 'match')}_{size}.png"
         img.save(path, "PNG", optimize=True)
@@ -310,16 +307,14 @@ def create_news_image(title: str, source: str = "") -> str | None:
         f_small  = ImageFont.truetype(FONT_PATH, 26)
 
         # Header
-        header = render_arabic("⚡ خبر عاجل | Breaking News")
-        draw.text((W // 2, 50), header, font=f_medium, fill="#ffffff", anchor="mm")
+        header = "⚡ خبر عاجل | Breaking News"
+        draw.text((W // 2, 50), header, font=f_medium, fill="#ffffff", anchor="mm", direction="rtl", language="ar")
 
         # News icon
         draw.text((W // 2, H // 2 - 80), "📰", font=ImageFont.truetype(FONT_PATH, 80), anchor="mm")
 
         # Title — word wrap
-        title_rendered = render_arabic(title)
-        # Simple word wrap
-        words = title_rendered.split()
+        words = title.split()
         lines, line = [], []
         for word in words:
             line.append(word)
@@ -333,16 +328,15 @@ def create_news_image(title: str, source: str = "") -> str | None:
 
         y_start = H // 2 + 20
         for i, ln in enumerate(lines[:3]):
-            draw.text((W // 2, y_start + i * 65), ln, font=f_title, fill="#f9fafb", anchor="mm")
+            draw.text((W // 2, y_start + i * 65), ln, font=f_title, fill="#f9fafb", anchor="mm", direction="rtl", language="ar")
 
         # Source
         if source:
-            src_txt = render_arabic(f"المصدر: {source}")
-            draw.text((W // 2, H - 80), src_txt, font=f_small, fill="#6b7280", anchor="mm")
+            src_txt = f"المصدر: {source}"
+            draw.text((W // 2, H - 80), src_txt, font=f_small, fill="#9ca3af", anchor="mm", direction="rtl", language="ar")
 
         # Watermark
-        site_txt = render_arabic("yalla-shoot-today.vercel.app")
-        draw.text((W // 2, H - 28), site_txt, font=f_small, fill="#374151", anchor="mm")
+        draw.text((W // 2, H - 28), "yalla-shoot-today.vercel.app", font=f_small, fill="#4b5563", anchor="mm")
 
         path = f"news_{hashlib.md5(title.encode()).hexdigest()[:8]}.png"
         img.save(path, "PNG", optimize=True)
