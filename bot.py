@@ -1,7 +1,7 @@
 import os
 import requests
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "")
@@ -10,120 +10,122 @@ WEBSITE_URL = os.getenv("WEBSITE_URL", "https://your-vercel-domain.vercel.app")
 TELEGRAM_API_URL = os.getenv("TELEGRAM_API_URL", "https://api.telegram.org").rstrip('/')
 SPONSOR_URL = "https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039"
 
+# ─── FILTERS ──────────────────────────────────────────────────────────────────
+# Only football. Only these leagues.
+ALLOWED_TOURNAMENTS = [
+    # Big 5 European
+    "الدوري الإنجليزي", "الدوري الممتاز", "البريميرليغ", "premier league",
+    "الدوري الإسباني", "لا ليغا", "la liga",
+    "الدوري الإيطالي", "سيريا", "serie a",
+    "الدوري الألماني", "بوندسليغا", "bundesliga",
+    "الدوري الفرنسي", "ليغ 1", "ligue 1",
+    # UCL/UEL/UECL
+    "دوري أبطال أوروبا", "دوري أبطال", "champions league",
+    "الدوري الأوروبي", "europa league",
+    "دوري المؤتمر", "conference league",
+    # Saudi
+    "الدوري السعودي", "دوري روشن", "الدوري السعودي للمحترفين",
+    # Egyptian
+    "الدوري المصري", "الدوري المصري الممتاز",
+    # Cups related to these leagues
+    "كأس مصر", "كأس خادم الحرمين", "كأس الملك",
+    "كأس الاتحاد الإنجليزي", "كأس ملك إسبانيا", "كأس إيطاليا",
+    # World events
+    "كأس العالم", "كأس العالم للأندية",
+]
+
+# Exclude non-football sports keywords
+EXCLUDED_SPORTS = [
+    "كرة السلة", "basketball", "tennis", "تنس", "كرة طائرة", "volleyball",
+    "handball", "كرة يد", "rugby", "رغبي", "cricket", "كريكيت",
+    "baseball", "بيسبول", "مصارعة", "boxing", "ملاكمة",
+    "سباحة", "swimming", "atletismo", "ألعاب قوى",
+]
+
+def is_allowed_match(tournament: str, team_a: str = "", team_b: str = "") -> bool:
+    t = tournament.lower()
+    # Reject known non-football sports
+    for excluded in EXCLUDED_SPORTS:
+        if excluded.lower() in t:
+            return False
+    # Must match one of the allowed tournaments
+    for allowed in ALLOWED_TOURNAMENTS:
+        if allowed.lower() in t:
+            return True
+    return False
+
+
+# ─── EMOJI HELPERS ────────────────────────────────────────────────────────────
 def get_tournament_emoji(tour_name):
-    tour_normalized = tour_name.lower()
-    if "إنجليزي" in tour_normalized or "انجليزي" in tour_normalized:
-        return "🏴"
-    elif "إسباني" in tour_normalized or "اسباني" in tour_normalized:
-        return "🇪🇸"
-    elif "إيطالي" in tour_normalized or "ايطالي" in tour_normalized:
-        return "🇮🇹"
-    elif "فرنسي" in tour_normalized:
-        return "🇫🇷"
-    elif "ألماني" in tour_normalized or "الماني" in tour_normalized:
-        return "🇩🇪"
-    elif "سعودي" in tour_normalized or "روشن" in tour_normalized:
-        return "🇸🇦"
-    elif "مصر" in tour_normalized:
-        return "🇪🇬"
-    elif "دوري أبطال أوروبا" in tour_normalized or "ابطال اوروبا" in tour_normalized:
-        return "🇪🇺"
-    elif "دوري أبطال أفريقيا" in tour_normalized or "ابطال افريقيا" in tour_normalized:
-        return "🌍"
-    elif "كأس العالم" in tour_normalized:
-        return "🏆⚽"
-    elif "أمم أفريقيا" in tour_normalized or "امم افريقيا" in tour_normalized:
-        return "🏆🌍"
-    elif "أمم أوروبا" in tour_normalized or "اليورو" in tour_normalized:
-        return "🏆🇪🇺"
-    elif "دوري أبطال آسيا" in tour_normalized or "ابطال اسيا" in tour_normalized:
-        return "🏆🌏"
-    elif "كأس الملك" in tour_normalized or "كأس خادم" in tour_normalized:
-        return "🏆🇸🇦"
-    return "🏆"
+    t = tour_name.lower()
+    if "إنجليزي" in t or "انجليزي" in t or "بريميرليغ" in t: return "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+    if "إسباني" in t or "اسباني" in t or "ليغا" in t: return "🇪🇸"
+    if "إيطالي" in t or "ايطالي" in t or "سيريا" in t: return "🇮🇹"
+    if "فرنسي" in t or "ليغ" in t: return "🇫🇷"
+    if "ألماني" in t or "الماني" in t or "بوندس" in t: return "🇩🇪"
+    if "سعودي" in t or "روشن" in t: return "🇸🇦"
+    if "مصر" in t: return "🇪🇬"
+    if "دوري أبطال" in t or "ابطال اوروبا" in t or "champions" in t: return "⭐🏆"
+    if "أوروبي" in t or "europa" in t: return "🇪🇺"
+    if "مؤتمر" in t or "conference" in t: return "🌍"
+    if "كأس العالم" in t: return "🏆🌍"
+    if "أندية" in t: return "🏆⚽"
+    return "⚽"
 
 def get_team_flag(team_name):
     name = team_name.strip()
-    # National Teams
-    if "المغرب" in name: return "🇲🇦"
-    if "هايت" in name: return "🇭🇹"
-    if "إسكتلندا" in name or "اسكتلندا" in name: return "🏴󠁧󠁢󠁳󠁣󠁴󠁿"
-    if "البرازيل" in name: return "🇧🇷"
-    if "التشيك" in name: return "🇨🇿"
-    if "المكسيك" in name: return "🇲🇽"
-    if "جنوب أفريقيا" in name or "جنوب افريقيا" in name: return "🇿🇦"
-    if "كوريا" in name: return "🇰🇷"
-    if "إكوادور" in name or "اكوادور" in name: return "🇪🇨"
-    if "ألمانيا" in name or "المانيا" in name: return "🇩🇪"
-    if "كوراساو" in name: return "🇨🇼"
-    if "كوت ديفوار" in name or "ساحل العاج" in name: return "🇨🇮"
-    if "اليابان" in name: return "🇯🇵"
-    if "السويد" in name: return "🇸🇪"
-    if "تونس" in name: return "🇹🇳"
-    if "هولندا" in name: return "🇳🇱"
-    if "باراجواي" in name or "باراغواي" in name: return "🇵🇾"
-    if "أستراليا" in name or "استراليا" in name: return "🇦🇺"
-    if "تركيا" in name: return "🇹🇷"
-    if "أمريكا" in name or "الولايات المتحدة" in name: return "🇺🇸"
-    if "السنغال" in name: return "🇸🇳"
-    if "العراق" in name: return "🇮🇶"
-    if "النرويج" in name: return "🇳🇴"
-    if "فرنسا" in name: return "🇫🇷"
-    if "كاب فيردي" in name: return "🇨🇻"
-    if "السعودية" in name: return "🇸🇦"
-    if "أوروجواي" in name or "أوروغواي" in name: return "🇺🇾"
-    if "إسبانيا" in name or "اسبانيا" in name: return "🇪🇸"
-    if "مصر" in name: return "🇪🇬"
-    if "إيران" in name or "ايران" in name: return "🇮🇷"
-    if "نيوزيلندا" in name: return "🇳🇿"
-    if "بلجيكا" in name: return "🇧🇪"
-    if "الأرجنتين" in name or "الارجنتين" in name: return "🇦🇷"
-    if "إنجلترا" in name or "انجلترا" in name: return "🏴"
-    if "البرتغال" in name: return "🇵🇹"
-    if "كرواتيا" in name: return "🇭🇷"
-    if "الجزائر" in name: return "🇩🇿"
-    
-    # Clubs
-    if "ريال مدريد" in name: return "⚪"
-    if "برشلونة" in name: return "🔵🔴"
-    if "ليفربول" in name: return "🔴"
-    if "مانشستر سيتي" in name: return "🩵"
-    if "مانشستر يونايتد" in name: return "🔴"
-    if "أرسنال" in name or "ارسنال" in name: return "🔴⚪"
-    if "تشيلسي" in name: return "🔵"
-    if "بايرن" in name: return "🔴"
-    if "باريس" in name: return "🔵"
-    if "يوفنتوس" in name: return "⚫⚪"
-    if "الهلال" in name: return "🔵"
-    if "النصر" in name: return "🟡"
-    if "الاتحاد" in name: return "🟡⚫"
-    if "الأهلي" in name or "الاهلي" in name: return "🔴"
-    if "الزمالك" in name: return "⚪🔴"
-    if "بيراميدز" in name: return "🔵"
-    
+    flags = {
+        "المغرب": "🇲🇦", "البرازيل": "🇧🇷", "الأرجنتين": "🇦🇷", "الارجنتين": "🇦🇷",
+        "فرنسا": "🇫🇷", "إسبانيا": "🇪🇸", "اسبانيا": "🇪🇸", "إنجلترا": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+        "انجلترا": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "ألمانيا": "🇩🇪", "المانيا": "🇩🇪", "إيطاليا": "🇮🇹",
+        "البرتغال": "🇵🇹", "هولندا": "🇳🇱", "بلجيكا": "🇧🇪", "كرواتيا": "🇭🇷",
+        "السعودية": "🇸🇦", "مصر": "🇪🇬", "تونس": "🇹🇳", "الجزائر": "🇩🇿",
+        "العراق": "🇮🇶", "السنغال": "🇸🇳", "كوريا": "🇰🇷", "اليابان": "🇯🇵",
+        "أمريكا": "🇺🇸", "الولايات المتحدة": "🇺🇸", "أستراليا": "🇦🇺", "تركيا": "🇹🇷",
+    }
+    for key, flag in flags.items():
+        if key in name:
+            return flag
+    # Club emoji shortcuts
+    clubs = {
+        "ريال مدريد": "⚪", "برشلونة": "🔵🔴", "ليفربول": "🔴",
+        "مانشستر سيتي": "🩵", "مانشستر يونايتد": "🔴", "أرسنال": "🔴⚪",
+        "ارسنال": "🔴⚪", "تشيلسي": "🔵", "توتنهام": "⚪",
+        "بايرن": "🔴", "باريس": "🔵🔴", "يوفنتوس": "⚫⚪",
+        "إنتر": "⚫🔵", "انتر": "⚫🔵", "ميلان": "🔴⚫",
+        "الهلال": "🔵", "النصر": "🟡", "الاتحاد": "🟡⚫",
+        "الأهلي": "🔴", "الاهلي": "🔴", "الزمالك": "⚪🔴",
+        "بيراميدز": "🔵",
+    }
+    for key, emoji in clubs.items():
+        if key in name:
+            return emoji
     return "⚽"
 
+
+# ─── TELEGRAM API ─────────────────────────────────────────────────────────────
 def send_telegram_api(method, payload):
     if not BOT_TOKEN or not CHANNEL_ID:
         print("Telegram BOT_TOKEN or CHANNEL_ID not configured.")
         return None
-        
+
     if "chat_id" not in payload:
         payload["chat_id"] = CHANNEL_ID
-        
-    use_proxy = False
-    if WEBSITE_URL and "localhost" not in WEBSITE_URL and "127.0.0.1" not in WEBSITE_URL and "your-vercel-domain" not in WEBSITE_URL:
-        use_proxy = True
-        
+
+    use_proxy = (
+        WEBSITE_URL and
+        "localhost" not in WEBSITE_URL and
+        "127.0.0.1" not in WEBSITE_URL and
+        "your-vercel-domain" not in WEBSITE_URL
+    )
+
     if use_proxy:
         url = f"{WEBSITE_URL.rstrip('/')}/api/telegram_proxy"
         payload["token"] = BOT_TOKEN
         payload["method"] = method
-        print(f"[Telegram Client] Routing {method} request through Vercel proxy: {url}")
     else:
         url = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/{method}"
-        print(f"[Telegram Client] Sending {method} request directly to Telegram API: {url}")
-        
+
     try:
         response = requests.post(url, json=payload, timeout=15)
         if response.status_code == 200:
@@ -131,296 +133,378 @@ def send_telegram_api(method, payload):
                 res_data = response.json()
                 if res_data.get("ok"):
                     return res_data
-            except Exception as e:
-                print(f"Error parsing response JSON: {e}")
+            except Exception:
+                pass
             return {"ok": True}
         else:
-            print(f"Failed to send Telegram request {method}: {response.text}")
+            print(f"[Telegram] Failed {method}: {response.text[:200]}")
             if use_proxy:
-                fallback_url = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/{method}"
-                print(f"[Telegram Client] Proxy failed. Trying direct fallback to Telegram API...")
+                # Direct fallback
                 payload.pop("token", None)
                 payload.pop("method", None)
                 try:
-                    fb_resp = requests.post(fallback_url, json=payload, timeout=10)
-                    if fb_resp.status_code == 200:
-                        return fb_resp.json()
-                except Exception as ex:
-                    print(f"Fallback failed: {ex}")
+                    fb = requests.post(f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/{method}", json=payload, timeout=10)
+                    if fb.status_code == 200:
+                        return fb.json()
+                except Exception:
+                    pass
             return None
     except Exception as e:
-        print(f"Error sending Telegram request: {e}")
-        if use_proxy:
-            try:
-                fallback_url = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/{method}"
-                print(f"[Telegram Client] Proxy exception. Trying direct fallback to Telegram API...")
-                payload.pop("token", None)
-                payload.pop("method", None)
-                fb_resp = requests.post(fallback_url, json=payload, timeout=10)
-                if fb_resp.status_code == 200:
-                    return fb_resp.json()
-            except Exception as ex:
-                print(f"Fallback failed: {ex}")
+        print(f"[Telegram] Exception {method}: {e}")
         return None
 
-def send_telegram_message(text, parse_mode="HTML", reply_markup=None):
+
+def send_message_and_get_id(text, reply_markup=None) -> int | None:
+    """Send message, return message_id if successful."""
     payload = {
         "text": text,
-        "parse_mode": parse_mode,
-        "disable_web_page_preview": True
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
     }
     if reply_markup:
         payload["reply_markup"] = reply_markup
     res = send_telegram_api("sendMessage", payload)
-    return res is not None
+    if res and isinstance(res, dict):
+        result = res.get("result", {})
+        return result.get("message_id") if isinstance(result, dict) else None
+    return None
+
+
+def send_telegram_message(text, parse_mode="HTML", reply_markup=None):
+    return send_message_and_get_id(text, reply_markup) is not None
+
 
 def pin_telegram_message(message_id):
-    payload = {
+    return send_telegram_api("pinChatMessage", {
         "message_id": message_id,
-        "disable_notification": True
-    }
-    return send_telegram_api("pinChatMessage", payload)
+        "disable_notification": True,
+    })
+
 
 def send_telegram_poll(question, options):
-    payload = {
+    return send_telegram_api("sendPoll", {
         "question": question,
         "options": options,
-        "is_anonymous": False
-    }
-    return send_telegram_api("sendPoll", payload)
+        "is_anonymous": False,
+    })
 
+
+# ─── DELETE OLD MESSAGES ───────────────────────────────────────────────────────
+def delete_expired_match_messages():
+    """Delete Telegram messages older than 1 day from the channel (best-effort)."""
+    if not os.path.exists(DB_PATH):
+        return
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # Get message IDs sent >24h ago
+    try:
+        cursor.execute("""
+            SELECT telegram_msg_id FROM match_telegram_msgs
+            WHERE sent_at < datetime('now', '-1 day')
+            AND deleted = 0
+        """)
+        rows = cursor.fetchall()
+        for (msg_id,) in rows:
+            if msg_id:
+                res = send_telegram_api("deleteMessage", {"message_id": int(msg_id)})
+                if res:
+                    cursor.execute(
+                        "UPDATE match_telegram_msgs SET deleted = 1 WHERE telegram_msg_id = ?",
+                        (msg_id,)
+                    )
+        conn.commit()
+    except Exception as e:
+        print(f"[Telegram] Error deleting expired messages: {e}")
+    finally:
+        conn.close()
+
+
+def ensure_msg_log_table():
+    """Create the message log table if it doesn't exist."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS match_telegram_msgs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id TEXT,
+            alert_type TEXT,
+            telegram_msg_id INTEGER,
+            sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            deleted INTEGER DEFAULT 0
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def log_telegram_msg(match_id, alert_type, msg_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO match_telegram_msgs (match_id, alert_type, telegram_msg_id) VALUES (?, ?, ?)",
+        (match_id, alert_type, msg_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+# ─── SCHEDULE FORMAT ──────────────────────────────────────────────────────────
 def format_daily_schedule():
     if not os.path.exists(DB_PATH):
         return "لا توجد مباريات مسجلة اليوم."
-        
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    # Select all matches for today
     cursor.execute("SELECT tournament, teamA, teamB, time, status, channel FROM matches")
     rows = cursor.fetchall()
     conn.close()
-    
+
     if not rows:
         return "📅 لا توجد مباريات مجدولة لليوم."
-        
-    # Group matches by tournament
+
+    # Filter: football only, allowed leagues only
     by_tour = {}
     for tour, team_a, team_b, time_str, status, channel in rows:
-        if tour not in by_tour:
-            by_tour[tour] = []
-        by_tour[tour].append((team_a, team_b, time_str, status, channel))
-        
+        if not is_allowed_match(tour):
+            continue
+        by_tour.setdefault(tour, []).append((team_a, team_b, time_str, status, channel))
+
+    if not by_tour:
+        return "📅 لا توجد مباريات من الدوريات المتاحة اليوم."
+
     msg = f"📅 <b>جدول مباريات اليوم ({datetime.now().strftime('%Y-%m-%d')})</b>\n\n"
-    
     for tour, matches in by_tour.items():
         msg += f"{get_tournament_emoji(tour)} <b>{tour}</b>:\n"
         for team_a, team_b, time_str, status, channel in matches:
             channel_info = f" | 📺 {channel}" if channel else ""
             status_info = f" ({status})" if status != "لم تبدأ" else ""
-            msg += f"  🔹 {get_team_flag(team_a)} {team_a} 🆚 {get_team_flag(team_b)} {team_b}\n  ⏰ {time_str}{channel_info}{status_info}\n\n"
-            
+            msg += (
+                f"  🔹 {get_team_flag(team_a)} {team_a} 🆚 {get_team_flag(team_b)} {team_b}\n"
+                f"  ⏰ {time_str}{channel_info}{status_info}\n\n"
+            )
+
     msg += f"🔗 تابع المباريات مباشرة على موقعنا:\n{WEBSITE_URL}"
     return msg
 
+
 def broadcast_schedule():
     text = format_daily_schedule()
-    # Add a clean inline button to open the website
     reply_markup = {
         "inline_keyboard": [
             [{"text": "📺 مشاهدة المباريات بث مباشر", "url": WEBSITE_URL}]
         ]
     }
-    res = send_telegram_api("sendMessage", {
-        "text": text,
-        "parse_mode": "HTML",
-        "reply_markup": reply_markup,
-        "disable_web_page_preview": True
-    })
-    if res and isinstance(res, dict) and "result" in res:
-        message_id = res["result"].get("message_id")
-        if message_id:
-            print(f"[Telegram Scheduler] Automatically pinning daily schedule message ID: {message_id}")
-            try:
-                send_telegram_api("unpinAllChatMessages", {})
-            except Exception:
-                pass
-            pin_telegram_message(message_id)
-            return True
-    return res is not None
+    msg_id = send_message_and_get_id(text, reply_markup=reply_markup)
+    if msg_id:
+        try:
+            send_telegram_api("unpinAllChatMessages", {})
+        except Exception:
+            pass
+        pin_telegram_message(msg_id)
+        return True
+    return False
 
+
+# ─── MATCH ALERTS ─────────────────────────────────────────────────────────────
 def check_and_send_alerts():
     if not os.path.exists(DB_PATH):
-        print("Database file does not exist.")
         return
-        
+
+    ensure_msg_log_table()
+    delete_expired_match_messages()
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    
-    from datetime import datetime, timedelta
+
     cairo_now = datetime.utcnow() + timedelta(hours=3)
     cairo_today = cairo_now.strftime("%Y-%m-%d")
-    
-    # Select all active matches for today
+
     cursor.execute("""
-        SELECT * FROM matches 
+        SELECT * FROM matches
         WHERE match_date = ? OR match_date IS NULL
     """, (cairo_today,))
     matches = cursor.fetchall()
-    
+    conn.close()
+
     for m in matches:
-        match_id = m['id']
-        team_a = m['teamA']
-        team_b = m['teamB']
+        match_id  = m['id']
+        team_a    = m['teamA']
+        team_b    = m['teamB']
         tournament = m['tournament']
-        status = m['status']
-        score_a = m['scoreA']
-        score_b = m['scoreB']
-        time_str = m['time']
-        
-        # Safe reading of values
-        start_sent = m['telegram_start_sent'] if 'telegram_start_sent' in m.keys() else 0
-        half_sent = m['telegram_half_sent'] if 'telegram_half_sent' in m.keys() else 0
-        end_sent = m['telegram_end_sent'] if 'telegram_end_sent' in m.keys() else 0
-        last_score_a = m['last_telegram_scoreA'] if 'last_telegram_scoreA' in m.keys() else None
-        last_score_b = m['last_telegram_scoreB'] if 'last_telegram_scoreB' in m.keys() else None
-        
+        status    = m['status']
+        score_a   = m['scoreA']
+        score_b   = m['scoreB']
+        time_str  = m['time']
+
+        # ── FILTER: only allowed football leagues ──────────────────────────
+        if not is_allowed_match(tournament):
+            continue
+
+        keys = m.keys()
+        start_sent  = m['telegram_start_sent']  if 'telegram_start_sent'  in keys else 0
+        half_sent   = m['telegram_half_sent']   if 'telegram_half_sent'   in keys else 0
+        end_sent    = m['telegram_end_sent']    if 'telegram_end_sent'    in keys else 0
+        last_score_a = m['last_telegram_scoreA'] if 'last_telegram_scoreA' in keys else None
+        last_score_b = m['last_telegram_scoreB'] if 'last_telegram_scoreB' in keys else None
+
         tour_emoji = get_tournament_emoji(tournament)
-        
-        # 1. Start Alert (15 minutes before match start, or when it starts)
+        flag_a = get_team_flag(team_a)
+        flag_b = get_team_flag(team_b)
+
+        # ── 1. START ALERT ─────────────────────────────────────────────────
         should_send_start = False
         if not start_sent:
-            if status == 'جارية الآن' or 'الشوط' in status:
+            if status in ('جارية الآن',) or 'الشوط' in status:
                 should_send_start = True
             elif status == 'لم تبدأ' and time_str and ':' in time_str:
                 try:
-                    match_hour, match_min = map(int, time_str.split(':'))
-                    match_dt = cairo_now.replace(hour=match_hour, minute=match_min, second=0, microsecond=0)
+                    h, mn = map(int, time_str.split(':'))
+                    match_dt = cairo_now.replace(hour=h, minute=mn, second=0, microsecond=0)
                     diff = (match_dt - cairo_now).total_seconds()
-                    # 15 minutes = 900 seconds. 
-                    # If match starts in <= 15 minutes (900 seconds) and we haven't passed start time by more than 15 mins
                     if -900 <= diff <= 900:
                         should_send_start = True
-                except Exception as ex:
-                    print(f"Error parsing start time for alert: {ex}")
-                    
+                except Exception:
+                    pass
+
         if should_send_start:
-            print(f"[Telegram Alert] Sending start alert for {team_a} VS {team_b}...")
             text = (
-                f"🚨 <b>مباراة مرتقبة تبدأ قريباً!</b>\n\n"
+                f"🚨 <b>مباراة مرتقبة!</b>\n\n"
                 f"{tour_emoji} <b>{tournament}</b>\n"
-                f"⚔️ <b>{get_team_flag(team_a)} {team_a} 🆚 {get_team_flag(team_b)} {team_b}</b>\n\n"
+                f"⚔️ <b>{flag_a} {team_a} 🆚 {flag_b} {team_b}</b>\n\n"
                 f"⏰ التوقيت: {time_str} (بتوقيت مصر)\n"
-                f"📺 البث المباشر متوفر الآن بجودة عالية وبدون تقطيع!\n"
-                f"اضغط على زر المشاهدة أدناه للمتابعة مباشرة 👇"
+                f"📺 البث المباشر متوفر الآن بجودة عالية!\n"
+                f"اضغط زر المشاهدة أدناه 👇"
             )
             reply_markup = {
                 "inline_keyboard": [
                     [{"text": "📺 شاهد المباراة بث مباشر الآن", "url": WEBSITE_URL}],
-                    [{"text": "🎁 توقع نتيجة المباراة واربح مكافأة 130$", "url": SPONSOR_URL}]
+                    [{"text": "🎁 توقع النتيجة واربح 130$", "url": SPONSOR_URL}],
                 ]
             }
-            if send_telegram_message(text, reply_markup=reply_markup):
-                conn_write = sqlite3.connect(DB_PATH)
-                cursor_write = conn_write.cursor()
-                cursor_write.execute("UPDATE matches SET telegram_start_sent = 1 WHERE id = ?", (match_id,))
-                conn_write.commit()
-                conn_write.close()
-                
-                # Send poll for predicting the winner (interactive engagement)
+            msg_id = send_message_and_get_id(text, reply_markup)
+            if msg_id:
+                log_telegram_msg(match_id, "start", msg_id)
+                _update_match(match_id, telegram_start_sent=1)
+                # Prediction poll
                 try:
-                    question = f"من فائز بمباراة اليوم: {team_a} VS {team_b}؟"
-                    options = [team_a, "التعادل", team_b]
-                    print(f"[Telegram Alert] Sending prediction poll for {team_a} VS {team_b}...")
-                    send_telegram_poll(question, options)
-                except Exception as poll_ex:
-                    print(f"Error sending Telegram poll: {poll_ex}")
-                    
-        # 2. Goal Alerts (if match is live, check if score changed)
+                    send_telegram_poll(
+                        f"من الفائز: {team_a} VS {team_b}؟",
+                        [team_a, "التعادل", team_b]
+                    )
+                except Exception:
+                    pass
+
+        # ── 2. GOAL ALERT ──────────────────────────────────────────────────
         is_live = (status == 'جارية الآن' or 'الشوط' in status)
         if is_live and last_score_a is not None and last_score_b is not None:
             try:
                 curr_a = int(score_a) if score_a and str(score_a).isdigit() else 0
                 curr_b = int(score_b) if score_b and str(score_b).isdigit() else 0
-                prev_a = int(last_score_a) if last_score_a and str(last_score_a).isdigit() else 0
-                prev_b = int(last_score_b) if last_score_b and str(last_score_b).isdigit() else 0
-                
+                prev_a = int(last_score_a) if str(last_score_a).isdigit() else 0
+                prev_b = int(last_score_b) if str(last_score_b).isdigit() else 0
+
                 if curr_a > prev_a or curr_b > prev_b:
                     scorer_team = team_a if curr_a > prev_a else team_b
-                    print(f"[Telegram Alert] Goal scored! {scorer_team} scored in {team_a} VS {team_b} ({score_a}-{score_b})")
-                    
+                    scorer_flag = flag_a if curr_a > prev_a else flag_b
+                    # Try to get scorer name from scraper data
+                    scorer_name = _get_scorer_name(match_id, curr_a > prev_a)
+
+                    goal_line = (
+                        f"⚽ <b>{scorer_flag} {scorer_team}</b>"
+                        + (f" — {scorer_name}" if scorer_name else "")
+                    )
                     text = (
-                        f"⚽️ <b>جووووول! هدف جديد في المباراة!</b>\n\n"
+                        f"⚽️ <b>جووووول!</b>\n\n"
                         f"{tour_emoji} <b>{tournament}</b>\n"
-                        f"⚔️ <b>{get_team_flag(team_a)} {team_a} {score_a} - {score_b} {team_b} {get_team_flag(team_b)}</b>\n\n"
-                        f"📺 تابع الهدف ومجريات البث المباشر مباشرة 👇"
+                        f"⚔️ <b>{flag_a} {team_a} {score_a} - {score_b} {team_b} {flag_b}</b>\n\n"
+                        f"{goal_line}\n\n"
+                        f"📺 تابع الهدف ومجريات البث المباشر 👇"
                     )
                     reply_markup = {
                         "inline_keyboard": [
                             [{"text": "📺 شاهد الهدف والبث المباشر", "url": WEBSITE_URL}],
-                            [{"text": "🎁 توقع نتيجة المباراة واربح مكافأة 130$", "url": SPONSOR_URL}]
+                            [{"text": "🎁 توقع النتيجة واربح 130$", "url": SPONSOR_URL}],
                         ]
                     }
-                    send_telegram_message(text, reply_markup=reply_markup)
+                    msg_id = send_message_and_get_id(text, reply_markup)
+                    if msg_id:
+                        log_telegram_msg(match_id, "goal", msg_id)
             except Exception as e:
-                print(f"Error processing goal alerts: {e}")
-                
-        # Update last score values for live matches so next check detects score changes
+                print(f"[Telegram] Goal alert error: {e}")
+
+        # Update score for next comparison
         if is_live:
-            conn_write = sqlite3.connect(DB_PATH)
-            cursor_write = conn_write.cursor()
-            cursor_write.execute("UPDATE matches SET last_telegram_scoreA = ?, last_telegram_scoreB = ? WHERE id = ?", (score_a, score_b, match_id))
-            conn_write.commit()
-            conn_write.close()
-            
-        # 3. Halftime Alert (status is 'بين الشوطين')
-        is_halftime = (status == 'بين الشوطين' or 'بين الشوطين' in status)
-        if is_halftime and not half_sent:
-            print(f"[Telegram Alert] Sending halftime alert for {team_a} VS {team_b}...")
+            _update_match(match_id, last_telegram_scoreA=score_a, last_telegram_scoreB=score_b)
+
+        # ── 3. HALFTIME ALERT ──────────────────────────────────────────────
+        is_half = ('بين الشوطين' in status)
+        if is_half and not half_sent:
             text = (
-                f"⏸️ <b>نهاية الشوط الأول (الاستراحة)</b>\n\n"
+                f"⏸️ <b>نهاية الشوط الأول</b>\n\n"
                 f"{tour_emoji} <b>{tournament}</b>\n"
-                f"⚔️ <b>{get_team_flag(team_a)} {team_a} {score_a} 🆚 {score_b} {team_b} {get_team_flag(team_b)}</b>\n\n"
-                f"📺 لمتابعة الشوط الثاني ومجريات البث المباشر 👇"
+                f"⚔️ <b>{flag_a} {team_a} {score_a} 🆚 {score_b} {team_b} {flag_b}</b>\n\n"
+                f"📺 لمتابعة الشوط الثاني 👇"
             )
             reply_markup = {
                 "inline_keyboard": [
                     [{"text": "📺 تابع البث المباشر الآن", "url": WEBSITE_URL}],
-                    [{"text": "🎁 توقع نتيجة المباراة واربح مكافأة 130$", "url": SPONSOR_URL}]
+                    [{"text": "🎁 توقع النتيجة واربح 130$", "url": SPONSOR_URL}],
                 ]
             }
-            if send_telegram_message(text, reply_markup=reply_markup):
-                conn_write = sqlite3.connect(DB_PATH)
-                cursor_write = conn_write.cursor()
-                cursor_write.execute("UPDATE matches SET telegram_half_sent = 1 WHERE id = ?", (match_id,))
-                conn_write.commit()
-                conn_write.close()
-                
-        # 4. End Alert (status is 'انتهت')
-        is_ended = (status == 'انتهت' or 'انتهت' in status)
+            msg_id = send_message_and_get_id(text, reply_markup)
+            if msg_id:
+                log_telegram_msg(match_id, "half", msg_id)
+                _update_match(match_id, telegram_half_sent=1)
+
+        # ── 4. END ALERT ───────────────────────────────────────────────────
+        is_ended = ('انتهت' in status)
         if is_ended and not end_sent:
-            print(f"[Telegram Alert] Sending end-of-match alert for {team_a} VS {team_b}...")
             text = (
-                f"🏁 <b>نهاية المباراة! النتيجة النهائية</b>\n\n"
+                f"🏁 <b>نهاية المباراة!</b>\n\n"
                 f"{tour_emoji} <b>{tournament}</b>\n"
-                f"⚔️ <b>{get_team_flag(team_a)} {team_a} {score_a} 🆚 {score_b} {team_b} {get_team_flag(team_b)}</b>\n\n"
-                f"🎬 شاهد أهداف وملخص المباراة الآن على موقعنا 👇"
+                f"⚔️ <b>{flag_a} {team_a} {score_a} 🆚 {score_b} {team_b} {flag_b}</b>\n\n"
+                f"🎬 شاهد أهداف وملخص المباراة على موقعنا 👇"
             )
             reply_markup = {
                 "inline_keyboard": [
-                    [{"text": "🎬 شاهد أهداف وملخص المباراة", "url": WEBSITE_URL}],
-                    [{"text": "🎁 توقع نتيجة المباراة واربح مكافأة 130$", "url": SPONSOR_URL}]
+                    [{"text": "🎬 شاهد الأهداف والملخص", "url": WEBSITE_URL}],
+                    [{"text": "🎁 توقع النتيجة واربح 130$", "url": SPONSOR_URL}],
                 ]
             }
-            if send_telegram_message(text, reply_markup=reply_markup):
-                conn_write = sqlite3.connect(DB_PATH)
-                cursor_write = conn_write.cursor()
-                cursor_write.execute("UPDATE matches SET telegram_end_sent = 1 WHERE id = ?", (match_id,))
-                conn_write.commit()
-                conn_write.close()
-                
+            msg_id = send_message_and_get_id(text, reply_markup)
+            if msg_id:
+                log_telegram_msg(match_id, "end", msg_id)
+                _update_match(match_id, telegram_end_sent=1)
+
+
+# ─── HELPERS ──────────────────────────────────────────────────────────────────
+def _update_match(match_id, **fields):
+    if not fields:
+        return
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cols = ", ".join(f"{k} = ?" for k in fields)
+    vals = list(fields.values()) + [match_id]
+    cursor.execute(f"UPDATE matches SET {cols} WHERE id = ?", vals)
+    conn.commit()
     conn.close()
+
+
+def _get_scorer_name(match_id: str, home_scored: bool) -> str:
+    """Try to fetch scorer name from DB if stored; returns empty string if not available."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        # Try a scorers column if it exists
+        cursor.execute("SELECT stream_url FROM matches WHERE id = ?", (match_id,))
+        row = cursor.fetchone()
+        conn.close()
+        # scorer data not stored separately — return empty for now
+    except Exception:
+        pass
+    return ""
+
 
 if __name__ == "__main__":
     print(format_daily_schedule())

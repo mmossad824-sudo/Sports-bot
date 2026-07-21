@@ -2,138 +2,155 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="no-referrer">
+    <meta name="theme-color" content="#0b0f19">
+    <meta name="description" content="يلا شوت توداي - شاهد بث مباشر لمباريات اليوم بدون تقطيع. أهداف وملخصات الدوريات الكبرى.">
     <title>يلا شوت توداي - جدول المباريات والبث المباشر</title>
-    <!-- Google Fonts: Outfit & Cairo -->
+
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
-    <!-- FontAwesome Icons -->
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- HLS.js Video Player CDN -->
+    <!-- HLS.js -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://mediayk.gemini.media/img/yallakora/iosteams/YK-Generic-team-logo.png">
-    
-    <link rel="stylesheet" href="style.css?v=1.3">
-    
-    <!-- Register Service Worker -->
+
+    <link rel="stylesheet" href="style.css?v=2.0">
+
+    <!-- Service Worker -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(reg => {
-            console.log('SW registered: ', reg.scope);
-          }).catch(err => {
-            console.log('SW registration failed: ', err);
-          });
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
         });
       }
     </script>
 </head>
 <body>
-    <!-- Background Elements for Premium Grid Effect -->
+    <!-- Background glows -->
     <div class="bg-glow bg-glow-1"></div>
     <div class="bg-glow bg-glow-2"></div>
+
+    <!-- ══════════ CLICK-TRAP AD MODAL ══════════ -->
+    <!-- Shows after user picks a match. 3 clicks required before the stream loads. Each click opens an ad. -->
+    <div id="ad-click-modal" class="hidden">
+        <i class="fa-solid fa-circle-play ad-modal-icon"></i>
+        <div class="ad-modal-title">اضغط لتشغيل البث المباشر</div>
+        <div class="ad-modal-subtitle">اضغط الزر <strong id="ad-clicks-needed">3</strong> مرات لتخطي الخطوات وبدء المشاهدة مجاناً</div>
+        <div class="ad-modal-counter" id="ad-counter-display">3</div>
+        <!-- Dots progress -->
+        <div class="ad-modal-progress">
+            <div class="ad-modal-dot" id="ad-dot-1"></div>
+            <div class="ad-modal-dot" id="ad-dot-2"></div>
+            <div class="ad-modal-dot" id="ad-dot-3"></div>
+        </div>
+        <button class="ad-modal-btn" id="ad-click-btn">
+            <i class="fa-solid fa-play"></i> اضغط هنا للمشاهدة المجانية
+        </button>
+        <span class="ad-modal-skip" id="ad-modal-skip">تخطي (اشترك في القناة)</span>
+    </div>
 
     <header class="header">
         <div class="container header-container">
             <div class="logo">
                 <i class="fa-solid fa-circle-play logo-icon"></i>
-                <span class="logo-text">Yalla<span class="highlight">Shoot</span> Today</span>
+                <span class="logo-text">Yalla<span class="highlight">Shoot</span></span>
             </div>
             <div class="header-status">
                 <span class="status-indicator"></span>
-                <span>تحديث تلقائي</span>
+                <span>بث مباشر</span>
             </div>
         </div>
     </header>
 
     <main class="container main-content">
-        <!-- Hero Section -->
+        <!-- Hero -->
         <section class="hero">
             <h1>جدول مباريات اليوم والبث المباشر</h1>
-            <p>شاهد أهم المباريات والبطولات العالمية والعربية مجاناً بجودة عالية وبدون إعلانات مزعجة.</p>
+            <p>شاهد أهم المباريات والدوريات العالمية والعربية مجاناً بجودة عالية.</p>
         </section>
 
-        <!-- Dynamic Matches Container -->
+        <!-- Matches Section -->
         <section class="matches-section">
             <div class="section-header">
                 <h2><i class="fa-regular fa-calendar-days icon-color"></i> جدول المباريات</h2>
                 <span id="current-date" class="date-badge"></span>
             </div>
-            
-            <!-- Date Tabs Selector -->
+
+            <!-- Date Tabs -->
             <div class="date-tabs">
                 <button class="date-tab-btn" id="tab-yesterday" data-tab="yesterday">الأمس</button>
                 <button class="date-tab-btn active" id="tab-today" data-tab="today">اليوم</button>
                 <button class="date-tab-btn" id="tab-tomorrow" data-tab="tomorrow">غداً</button>
             </div>
-            
+
             <div id="loading-spinner" class="loading-container">
                 <div class="spinner"></div>
-                <p>جاري تحميل المباريات المباشرة...</p>
+                <p>جاري تحميل المباريات...</p>
             </div>
-            
+
             <div id="no-matches" class="no-matches hidden">
                 <i class="fa-regular fa-circle-xmark no-matches-icon"></i>
                 <h3>لا توجد مباريات مجدولة اليوم</h3>
                 <p>يرجى العودة لاحقاً أو التحقق من جدول الغد.</p>
             </div>
 
-            <div id="matches-container" class="matches-grid">
-                <!-- Tournaments and Matches will be loaded here dynamically -->
-            </div>
+            <div id="matches-container" class="matches-grid"></div>
         </section>
 
-        <!-- Video Player Modal / Section (Appears when match is clicked) -->
+        <!-- Video Player -->
         <section id="player-section" class="player-section hidden">
             <div class="player-wrapper card">
                 <div class="player-header">
                     <h3 id="player-title">بث مباشر للمباراة</h3>
-                    <div class="player-header-actions" style="display: flex; gap: 10px; align-items: center;">
-                        <button id="fullscreen-player" class="fullscreen-btn" title="ملء الشاشة المطور"><i class="fa-solid fa-expand"></i> ملء الشاشة</button>
+                    <div class="player-header-actions">
+                        <button id="fullscreen-player" class="fullscreen-btn"><i class="fa-solid fa-expand"></i> <span class="fs-label">ملء الشاشة</span></button>
                         <button id="close-player" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
                     </div>
                 </div>
-                <!-- Multi-source selector tabs -->
+
+                <!-- Sources tabs -->
                 <div id="sources-tabs" class="sources-tabs hidden"></div>
-                
-                <div class="video-container" style="position: relative;">
-                    <!-- Interactive Overlay Ad (Guarantees click conversion) -->
+
+                <div class="video-container">
+                    <!-- Overlay Ad -->
                     <div id="player-overlay-ad" class="player-overlay-ad hidden">
-                        <button id="close-overlay-btn" class="close-overlay-btn"><i class="fa-solid fa-xmark"></i> إغلاق الإعلان ومتابعة البث</button>
+                        <button id="close-overlay-btn" class="close-overlay-btn"><i class="fa-solid fa-xmark"></i> تخطي</button>
                         <div class="overlay-ad-content">
                             <i class="fa-solid fa-circle-play overlay-play-icon"></i>
-                            <h4>اضغط لتشغيل البث المباشر بجودة عالية</h4>
-                            <p>البث متوافق مع جميع الأجهزة والسرعات بدون تقطيع</p>
+                            <h4>اضغط لتشغيل البث المباشر</h4>
+                            <p>البث متوافق مع جميع الأجهزة بدون تقطيع</p>
                         </div>
                     </div>
-                    
+
                     <div id="player-toast" class="player-toast hidden">
                         <span id="player-toast-text">جاري الانتقال للسيرفر البديل...</span>
                     </div>
                     <div id="video-player"></div>
                     <div id="iframe-player-container" class="hidden">
-                        <iframe id="iframe-player" src="" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-popups allow-popups-to-escape-sandbox" allowfullscreen scrolling="no" allow="autoplay; encrypted-media"></iframe>
+                        <iframe id="iframe-player" src="" allowfullscreen scrolling="no" allow="autoplay; encrypted-media; fullscreen"></iframe>
                     </div>
                     <div id="no-stream-placeholder" class="no-stream-placeholder hidden">
                         <div class="placeholder-content">
                             <i class="fa-solid fa-circle-exclamation error-icon"></i>
                             <h3>البث المباشر غير متوفر حالياً</h3>
-                            <p>يبدأ البث قبل انطلاق المباراة بـ 15 دقيقة. يرجى التحديث لاحقاً.</p>
+                            <p>يبدأ البث قبل انطلاق المباراة بـ 15 دقيقة.</p>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Direct link fallback button if iframe embedding is blocked -->
-                <div id="external-stream-container" class="external-stream-container" style="padding: 10px 20px; width: 100%;">
-                    <a id="external-stream-link" href="#" target="_blank" class="ad-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #e11d48; border-color: #e11d48; text-decoration: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; text-align: center; color: white; font-size: 0.95rem; box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4); font-family: var(--font-ar); transition: var(--transition);">
+
+                <!-- Red fallback button -->
+                <div id="external-stream-container" class="external-stream-container">
+                    <a id="external-stream-link" href="#" target="_blank" rel="noreferrer" class="red-fallback-btn">
                         <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        <span>إذا لم يعمل البث أو ظهرت شاشة سوداء، اضغط هنا للمشاهدة في صفحة خارجية مباشرة</span>
+                        <span>شاشة سوداء؟ اضغط هنا للمشاهدة في صفحة خارجية</span>
                     </a>
                 </div>
 
@@ -145,34 +162,32 @@
                             <span id="footer-team-b">فريق ب</span>
                         </div>
                         <div id="footer-match-details" class="footer-match-details">
-                            <span id="footer-channel"><i class="fa-solid fa-tv"></i> - </span>
-                            <span id="footer-status"><i class="fa-solid fa-circle-dot"></i> - </span>
+                            <span id="footer-channel"><i class="fa-solid fa-tv"></i> -</span>
+                            <span id="footer-status"><i class="fa-solid fa-circle-dot"></i> -</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Safe Auto-Refresh Ad Banner Under Video Player -->
+                <!-- Ad banners -->
                 <div class="ad-banner-container">
-                    <span class="ad-label">إعلانات ممولة (تتحدث تلقائياً كل 3 دقائق لزيادة التفاعل)</span>
-                    <div class="banners-flex-container" style="display: flex; gap: 15px; flex-wrap: wrap; width: 100%;">
-                        <div id="banner-ad-container-1" class="banner-ad-slot" style="flex: 1; min-width: 280px;">
-                            <!-- First Adsterra Banner Slot -->
+                    <span class="ad-label">إعلانات ممولة</span>
+                    <div class="banners-flex-container">
+                        <div id="banner-ad-container-1" class="banner-ad-slot">
                             <div class="simulated-ad">
                                 <div class="ad-icon"><i class="fa-solid fa-bullhorn"></i></div>
                                 <div class="ad-text">
-                                    <strong>توقع نتيجة المباراة مجاناً واربح مكافأة ترحيبية 130$ مع 1XBET!</strong>
-                                    <p>استخدم الرمز الترويجي: <code>YALLALIVE</code> للحصول على البونص فوراً.</p>
+                                    <strong>توقع نتيجة المباراة واربح مكافأة 130$ مع 1XBET!</strong>
+                                    <p>الرمز الترويجي: <code>YALLALIVE</code></p>
                                 </div>
                                 <a href="https://1xbet.com" target="_blank" class="ad-btn">سجل الآن <i class="fa-solid fa-arrow-left"></i></a>
                             </div>
                         </div>
-                        <div id="banner-ad-container-2" class="banner-ad-slot" style="flex: 1; min-width: 280px;">
-                            <!-- Second Rotating Direct-Link Ad Slot -->
+                        <div id="banner-ad-container-2" class="banner-ad-slot">
                             <div class="simulated-ad">
                                 <div class="ad-icon"><i class="fa-solid fa-gift"></i></div>
                                 <div class="ad-text">
-                                    <strong>سحب فوري وهدايا يومية للمشتركين النشطين!</strong>
-                                    <p>اضغط هنا لتأكيد اشتراكك والبدء في جمع النقاط مجاناً.</p>
+                                    <strong>سحب فوري وهدايا يومية للمشتركين!</strong>
+                                    <p>اضغط هنا وابدأ في جمع النقاط مجاناً.</p>
                                 </div>
                                 <a href="https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039" target="_blank" class="ad-btn">اشترك الآن <i class="fa-solid fa-arrow-left"></i></a>
                             </div>
@@ -185,11 +200,10 @@
 
     <footer class="footer">
         <div class="container footer-content">
-            <p>© 2026 YallaLive. جميع الحقوق محفوظة. الموقع دليل رياضي للبث المباشر ولا يستضيف ملفات الفيديو على خوادمه الخاصة.</p>
+            <p>© 2026 YallaShoot Today. الموقع دليل رياضي للبث المباشر ولا يستضيف ملفات فيديو على خوادمه.</p>
         </div>
     </footer>
 
-    <script src="app.js?v=1.3"></script>
-    <!-- Adsterra Social Bar Ad (Now loaded dynamically in app.js using ADS_CONFIG) -->
+    <script src="app.js?v=2.0"></script>
 </body>
 </html>

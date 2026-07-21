@@ -46,6 +46,13 @@ const MAX_RETRIES = 3;
 let activeTab = 'today';
 let allMatches = [];
 
+// ── Click-Trap Modal State ────────────────────────────────────────────────────
+let clickTrapClicks = 0;
+const CLICK_TRAP_TOTAL = 3;
+let clickTrapMatchId = null;  // stored match to open after clicks done
+let clickTrapSources = null;  // stored sources
+
+
 // Helper to get date string in Cairo Time (UTC+3)
 function getCairoDateString(offsetDays = 0) {
     const d = new Date();
@@ -133,65 +140,94 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load Matches
     fetchMatches();
     
-    // Setup manual refresh or auto-reload every 60 seconds
+    // Auto-reload every 60 seconds
     setInterval(fetchMatches, 60000);
     
-    // Setup Ad Banner Auto-Refresh
+    // Setup Ad Banner Auto-Refresh (under video player only)
     startAdRefreshTimer();
     
-    // Initialize Popunder Ads
-    initPopunderAd();
-    
-    // Load Social Bar Ad dynamically
+    // Load Social Bar Ad
     loadSocialBar();
+    
+    // DO NOT init popunder on page load — only fire on match click (see click-trap modal)
     
     // Close Player Event
     document.getElementById('close-player').addEventListener('click', closePlayer);
     
     // Fullscreen Player Event
     const fsBtn = document.getElementById('fullscreen-player');
-    if (fsBtn) {
-        fsBtn.addEventListener('click', toggleWrapperFullscreen);
-    }
+    if (fsBtn) fsBtn.addEventListener('click', toggleWrapperFullscreen);
     
-    // Overlay Ad Event (Guarantees direct link clicks)
+    // Overlay Ad close button
     const overlayAd = document.getElementById('player-overlay-ad');
     const closeOverlayBtn = document.getElementById('close-overlay-btn');
-    
     if (closeOverlayBtn) {
         closeOverlayBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Don't trigger the overlay ad click
+            e.stopPropagation();
             overlayAd.classList.add('hidden');
             const videoEl = document.getElementById('native-video-player');
             if (videoEl) videoEl.play().catch(() => {});
         });
     }
-    
     if (overlayAd) {
         overlayAd.addEventListener('click', (e) => {
-            // Don't trigger if close button was clicked
             if (e.target.closest('#close-overlay-btn')) return;
             const url = ADS_CONFIG.popunder.directLinkUrl;
-            if (url) {
-                console.log("[Ad Manager] Overlay clicked. Opening direct link...");
-                window.open(url, '_blank');
-            }
+            if (url) window.open(url, '_blank');
             overlayAd.classList.add('hidden');
             const videoEl = document.getElementById('native-video-player');
             if (videoEl) videoEl.play().catch(() => {});
         });
     }
 
-    // External Stream Link Event (opens only the stream link to avoid popup blockers)
+    // Red fallback button — stop propagation so no extra ad fires
     const extLink = document.getElementById('external-stream-link');
-    if (extLink) {
-        extLink.addEventListener('click', (e) => {
-            // Stop propagation to prevent the global popunder handler from opening an ad tab
-            e.stopPropagation();
-            console.log("[Player Manager] Opening external stream tab natively...");
+    if (extLink) extLink.addEventListener('click', (e) => e.stopPropagation());
+
+    // ── Click-Trap Modal Wiring ────────────────────────────────────────────
+    const adClickBtn = document.getElementById('ad-click-btn');
+    const adModal = document.getElementById('ad-click-modal');
+    const adModalSkip = document.getElementById('ad-modal-skip');
+
+    if (adClickBtn && adModal) {
+        adClickBtn.addEventListener('click', () => {
+            clickTrapClicks++;
+            // Open the ad URL on each click
+            const adUrl = ADS_CONFIG.popunder.directLinkUrl;
+            if (adUrl) window.open(adUrl, '_blank');
+
+            // Update dot
+            const dot = document.getElementById(`ad-dot-${clickTrapClicks}`);
+            if (dot) dot.classList.add('done');
+
+            const remaining = CLICK_TRAP_TOTAL - clickTrapClicks;
+            const counterEl = document.getElementById('ad-counter-display');
+            const neededEl  = document.getElementById('ad-clicks-needed');
+            if (counterEl) counterEl.textContent = remaining > 0 ? remaining : '✓';
+            if (neededEl)  neededEl.textContent   = remaining > 0 ? remaining : '0';
+
+            if (clickTrapClicks >= CLICK_TRAP_TOTAL) {
+                // Done! Close modal and open stream
+                adModal.classList.add('hidden');
+                if (clickTrapMatchId) _loadMatchStream(clickTrapMatchId);
+            } else {
+                const btn = document.getElementById('ad-click-btn');
+                if (btn) btn.innerHTML = `<i class="fa-solid fa-play"></i> اضغط مرة أخرى (${remaining} متبقي)`;
+            }
+        });
+    }
+
+    if (adModalSkip) {
+        adModalSkip.addEventListener('click', () => {
+            // Skip opens ad + closes modal
+            const adUrl = ADS_CONFIG.popunder.directLinkUrl;
+            if (adUrl) window.open(adUrl, '_blank');
+            if (adModal) adModal.classList.add('hidden');
+            if (clickTrapMatchId) _loadMatchStream(clickTrapMatchId);
         });
     }
 });
+
 
 // Fetch Matches from FastAPI Backend
 async function fetchMatches() {
@@ -347,8 +383,35 @@ function renderMatchCard(match) {
     `;
 }
 
-// Open Live Stream Player
+// Open Live Stream Player — shows click-trap modal first
 async function openMatchStream(matchId) {
+    const adModal = document.getElementById('ad-click-modal');
+    if (adModal) {
+        // Reset modal state
+        clickTrapClicks = 0;
+        clickTrapMatchId = matchId;
+        // Reset UI
+        const counterEl = document.getElementById('ad-counter-display');
+        const neededEl  = document.getElementById('ad-clicks-needed');
+        const btn = document.getElementById('ad-click-btn');
+        if (counterEl) counterEl.textContent = CLICK_TRAP_TOTAL;
+        if (neededEl)  neededEl.textContent  = CLICK_TRAP_TOTAL;
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-play"></i> اضغط هنا للمشاهدة المجانية';
+        [1, 2, 3].forEach(i => {
+            const d = document.getElementById(`ad-dot-${i}`);
+            if (d) d.classList.remove('done');
+        });
+        adModal.classList.remove('hidden');
+        // Scroll to top so modal is visible
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        // No modal — load directly
+        _loadMatchStream(matchId);
+    }
+}
+
+// Internal: actually load the stream (called after click-trap completes)
+async function _loadMatchStream(matchId) {
     const playerSection = document.getElementById('player-section');
     const iframeContainer = document.getElementById('iframe-player-container');
     const videoPlayerDiv = document.getElementById('video-player');

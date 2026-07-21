@@ -718,74 +718,6 @@ body {
     60% { transform: rotate(5deg); }
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .logo {
-        font-size: 1.25rem;
-    }
-    .logo-icon {
-        font-size: 1.5rem;
-    }
-    .header-status {
-        font-size: 0.75rem;
-        padding: 4px 8px;
-    }
-
-    .hero h1 {
-        font-size: 1.8rem;
-    }
-    
-    .section-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-    
-    .date-badge {
-        font-size: 0.8rem;
-        padding: 3px 10px;
-    }
-    
-    .tournament-matches {
-        grid-template-columns: 1fr;
-    }
-    
-    .match-bottom {
-        flex-direction: column;
-        gap: 12px;
-        align-items: center;
-    }
-    
-    .channel-info {
-        justify-content: center;
-        width: 100%;
-        font-size: 0.85rem;
-    }
-    
-    .watch-now-btn {
-        width: 100%;
-        text-align: center;
-        padding: 10px 16px;
-        font-size: 0.9rem;
-    }
-    
-    .simulated-ad {
-        flex-direction: column;
-        text-align: center;
-        gap: 12px;
-        padding: 15px;
-    }
-    
-    .ad-icon {
-        font-size: 1.5rem;
-    }
-    
-    .ad-btn {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
 /* Multi-source tabs styling */
 .sources-tabs {
     display: flex;
@@ -975,4 +907,722 @@ body {
     50% { transform: scale(1.08); opacity: 1; }
     100% { transform: scale(1); opacity: 0.9; }
 }
+
+/* Red Fallback Stream Button */
+.external-stream-container {
+    padding: 10px 20px;
+    width: 100%;
+    background: rgba(225, 29, 72, 0.05);
+    border-top: 1px solid rgba(225, 29, 72, 0.2);
+}
+
+.red-fallback-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #e11d48, #be123c);
+    color: white;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    font-family: var(--font-ar);
+    box-shadow: 0 4px 20px rgba(225, 29, 72, 0.45);
+    transition: var(--transition);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    touch-action: manipulation;
+    min-height: 52px;
+    text-align: center;
+}
+
+.red-fallback-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(225, 29, 72, 0.6);
+    background: linear-gradient(135deg, #f43f5e, #e11d48);
+}
+
+.red-fallback-btn:active { transform: scale(0.98); }
+
+/* Click-trap ad modal */
+#ad-click-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 15, 25, 0.97);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 24px;
+    backdrop-filter: blur(8px);
+}
+#ad-click-modal.hidden { display: none !important; }
+.ad-modal-icon { font-size: 5rem; color: #10b981; animation: overlayPulse 1.5s infinite; }
+.ad-modal-title { font-size: 1.5rem; font-weight: 900; color: #fff; text-align: center; font-family: 'Cairo', sans-serif; }
+.ad-modal-subtitle { color: #9ca3af; font-size: 1rem; text-align: center; font-family: 'Cairo', sans-serif; }
+.ad-modal-counter { font-size: 4rem; font-weight: 900; color: #10b981; font-family: 'Outfit', sans-serif; text-shadow: 0 0 20px rgba(16,185,129,0.6); }
+.ad-modal-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    padding: 18px 50px;
+    border-radius: 50px;
+    font-size: 1.2rem;
+    font-weight: 900;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    box-shadow: 0 8px 30px rgba(16,185,129,0.5);
+    transition: all 0.2s;
+    animation: overlayPulse 1.5s infinite;
+    min-width: 250px;
+    text-align: center;
+    touch-action: manipulation;
+}
+.ad-modal-btn:active { transform: scale(0.96); }
+.ad-modal-progress { display: flex; gap: 12px; }
+.ad-modal-dot { width: 14px; height: 14px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: all 0.3s; }
+.ad-modal-dot.done { background: #10b981; box-shadow: 0 0 10px rgba(16,185,129,0.6); }
+.ad-modal-skip { color: #6b7280; font-size: 0.8rem; cursor: pointer; font-family: 'Cairo', sans-serif; text-decoration: underline; }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding-bottom: max(15px, env(safe-area-inset-bottom));
+    }
+
+    .container {
+        padding: 0 12px;
+    }
+
+    /* Header Compact & Clean */
+    .header-container {
+        height: 54px;
+        padding: 0 10px;
+    }
+
+    .logo {
+        font-size: 1.15rem;
+        gap: 6px;
+    }
+
+    .logo-icon {
+        font-size: 1.35rem;
+    }
+
+    .header-status {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        gap: 6px;
+    }
+
+    /* Hero Section */
+    .hero {
+        padding: 24px 12px 18px;
+    }
+
+    .hero h1 {
+        font-size: 1.5rem;
+        line-height: 1.3;
+        margin-bottom: 8px;
+    }
+
+    .hero p {
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    /* Section Header */
+    .section-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+    }
+
+    .section-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .date-badge {
+        font-size: 0.8rem;
+        padding: 3px 10px;
+    }
+
+    /* Date Tabs - Full Width & Equal Button Sizes */
+    .date-tabs {
+        width: 100% !important;
+        max-width: 100%;
+        display: flex !important;
+        gap: 6px !important;
+        padding: 6px !important;
+        margin-bottom: 20px;
+        background: rgba(22, 30, 49, 0.6);
+        border-radius: 12px;
+        justify-content: space-between;
+    }
+
+    .date-tab-btn {
+        flex: 1 1 0% !important;
+        width: 100% !important;
+        text-align: center;
+        padding: 10px 4px !important;
+        font-size: 0.85rem !important;
+        min-height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 8px;
+        touch-action: manipulation;
+    }
+
+    /* Matches Section & Tournament Grid */
+    .tournament-group {
+        padding: 14px 12px;
+        border-radius: 14px;
+        margin-bottom: 16px;
+    }
+
+    .tournament-header {
+        margin-bottom: 14px;
+        padding-bottom: 8px;
+        gap: 8px;
+    }
+
+    .tournament-logo {
+        width: 24px;
+        height: 24px;
+    }
+
+    .tournament-name {
+        font-size: 1.05rem;
+    }
+
+    .tournament-matches {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+        gap: 12px !important;
+    }
+
+    /* Match Card - Full Width Single Column */
+    .match-card {
+        width: 100% !important;
+        padding: 14px 12px;
+        border-radius: 12px;
+        min-height: 44px;
+        touch-action: manipulation;
+    }
+
+    .match-top {
+        margin-bottom: 12px;
+        font-size: 0.75rem;
+    }
+
+    .match-teams {
+        gap: 8px;
+        margin-bottom: 12px;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .team {
+        gap: 6px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .team-logo {
+        width: 44px;
+        height: 44px;
+        object-fit: contain;
+        flex-shrink: 0;
+        padding: 4px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .team-name {
+        font-size: 0.85rem !important;
+        line-height: 1.25;
+        font-weight: 700;
+        max-width: 100%;
+        width: 100%;
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        margin: 0;
+    }
+
+    /* Match Score Center Display */
+    .match-score-center {
+        flex-shrink: 0;
+        min-width: 75px;
+        gap: 2px;
+        text-align: center;
+    }
+
+    .score-display {
+        font-size: 1.6rem !important;
+        font-weight: 900 !important;
+        color: #ffffff;
+        letter-spacing: 3px;
+        font-family: var(--font-en);
+        line-height: 1;
+        text-align: center;
+    }
+
+    .match-time {
+        font-size: 0.78rem;
+        text-align: center;
+    }
+
+    .cairo-time, .local-time {
+        gap: 3px;
+        justify-content: center;
+    }
+
+    .time-label {
+        font-size: 0.68rem;
+    }
+
+    .match-bottom {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+        padding-top: 10px;
+        border-top: 1px dashed var(--card-border);
+    }
+
+    .channel-info {
+        justify-content: center;
+        width: 100%;
+        font-size: 0.82rem;
+        gap: 6px;
+    }
+
+    .watch-now-btn {
+        width: 100% !important;
+        min-height: 44px !important;
+        text-align: center;
+        padding: 10px 16px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        touch-action: manipulation;
+    }
+
+    /* Player Section */
+    .player-section {
+        margin-top: 20px;
+        margin-bottom: 24px;
+        width: 100%;
+        padding: 0;
+        scroll-margin-top: 60px;
+    }
+
+    .player-wrapper {
+        border-radius: 12px;
+        border: 1px solid var(--card-border);
+        overflow: hidden;
+        width: 100%;
+    }
+
+    .player-header {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .player-header h3 {
+        font-size: 1.05rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .close-btn {
+        min-width: 44px !important;
+        min-height: 44px !important;
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: 50%;
+        touch-action: manipulation;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .fullscreen-btn {
+        min-height: 44px !important;
+        padding: 0 14px;
+        border-radius: 22px;
+        font-size: 0.82rem;
+        touch-action: manipulation;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Horizontal Scroll for Source Tabs */
+    .sources-tabs {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        padding: 10px 12px !important;
+        width: 100%;
+        scrollbar-width: none;
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .sources-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .source-btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        min-height: 44px !important;
+        padding: 8px 16px !important;
+        font-size: 0.85rem !important;
+        font-weight: 700;
+        border-radius: 8px;
+        touch-action: manipulation;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Video Container Aspect Ratio 16:9 */
+    .video-container {
+        width: 100% !important;
+        aspect-ratio: 16 / 9 !important;
+        position: relative !important;
+        background: #000;
+        overflow: hidden;
+    }
+
+    #video-player, #native-video-player, #iframe-player-container, #iframe-player, iframe {
+        width: 100% !important;
+        height: 100% !important;
+        aspect-ratio: 16 / 9 !important;
+        border: none;
+        object-fit: contain;
+    }
+
+    .player-overlay-ad {
+        padding: 15px;
+        text-align: center;
+    }
+
+    .close-overlay-btn {
+        min-height: 44px;
+        padding: 8px 16px;
+        font-size: 0.8rem;
+        border-radius: 8px;
+        touch-action: manipulation;
+        top: 10px;
+        right: 10px;
+    }
+
+    .overlay-play-icon {
+        font-size: 3.5rem;
+        margin-bottom: 10px;
+    }
+
+    .overlay-ad-content h4 {
+        font-size: 1.1rem;
+    }
+
+    .overlay-ad-content p {
+        font-size: 0.825rem;
+    }
+
+    /* Red Fallback Button - Full Width & Big on Mobile */
+    #external-stream-container {
+        width: 100% !important;
+        padding: 10px 12px !important;
+    }
+
+    #external-stream-link {
+        width: 100% !important;
+        display: flex !important;
+        min-height: 48px !important;
+        font-size: 0.9rem !important;
+        padding: 12px 14px !important;
+        border-radius: 10px !important;
+        justify-content: center !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 8px;
+        touch-action: manipulation;
+        box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4);
+    }
+
+    /* Player Footer Stack Vertically */
+    .player-footer {
+        padding: 12px 14px;
+        width: 100%;
+    }
+
+    .match-info-bar {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .match-teams-info {
+        font-size: 1rem;
+        font-weight: 700;
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .footer-match-details {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 6px;
+        font-size: 0.85rem;
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Banner Ads Below Player - Stack Vertically */
+    .ad-banner-container {
+        padding: 12px;
+        width: 100%;
+    }
+
+    .simulated-ad {
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 10px;
+        padding: 12px 10px;
+        width: 100%;
+        align-items: center !important;
+    }
+
+    .ad-icon {
+        font-size: 1.6rem;
+    }
+
+    .ad-text {
+        min-width: auto;
+        width: 100%;
+        text-align: center;
+        font-size: 0.82rem;
+        margin: 0;
+    }
+
+    .ad-btn {
+        width: 100% !important;
+        min-height: 44px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.88rem;
+        border-radius: 8px;
+        touch-action: manipulation;
+        text-align: center;
+    }
+
+    /* Footer & Safe Area Padding */
+    .footer {
+        padding: 30px 15px calc(30px + env(safe-area-inset-bottom));
+        margin-top: 40px;
+        font-size: 0.8rem;
+    }
+
+    #ad-click-modal {
+        padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+        gap: 18px;
+    }
+
+    .ad-modal-icon {
+        font-size: 3.8rem;
+    }
+
+    .ad-modal-title {
+        font-size: 1.25rem;
+    }
+
+    .ad-modal-subtitle {
+        font-size: 0.88rem;
+    }
+
+    .ad-modal-counter {
+        font-size: 3.2rem;
+    }
+
+    .ad-modal-btn {
+        width: 100% !important;
+        max-width: 320px;
+        min-height: 50px !important;
+        padding: 14px 24px;
+        font-size: 1.05rem;
+        touch-action: manipulation;
+    }
+}
+
+/* Extra Small Mobile Devices (<= 480px) */
+@media (max-width: 480px) {
+    .container {
+        padding: 0 8px;
+    }
+
+    .header-container {
+        height: 48px;
+        padding: 0 8px;
+    }
+
+    .logo {
+        font-size: 1rem;
+        gap: 4px;
+    }
+
+    .logo-icon {
+        font-size: 1.2rem;
+    }
+
+    .header-status {
+        font-size: 0.7rem;
+        padding: 3px 6px;
+        gap: 4px;
+    }
+
+    .hero {
+        padding: 16px 8px 12px;
+    }
+
+    .hero h1 {
+        font-size: 1.25rem;
+        margin-bottom: 6px;
+    }
+
+    .hero p {
+        font-size: 0.825rem;
+    }
+
+    .section-header h2 {
+        font-size: 1.1rem;
+    }
+
+    .date-tabs {
+        padding: 4px !important;
+        gap: 4px !important;
+        margin-bottom: 15px;
+    }
+
+    .date-tab-btn {
+        padding: 8px 2px !important;
+        font-size: 0.8rem !important;
+        min-height: 44px !important;
+    }
+
+    .tournament-group {
+        padding: 12px 8px;
+        border-radius: 12px;
+    }
+
+    .tournament-name {
+        font-size: 0.95rem;
+    }
+
+    .match-card {
+        padding: 12px 10px;
+        border-radius: 10px;
+    }
+
+    .match-teams {
+        gap: 6px;
+    }
+
+    .team-logo {
+        width: 38px;
+        height: 38px;
+        padding: 3px;
+    }
+
+    .team-name {
+        font-size: 0.8rem !important;
+    }
+
+    .match-score-center {
+        min-width: 65px;
+    }
+
+    .score-display {
+        font-size: 1.4rem !important;
+        letter-spacing: 2px;
+    }
+
+    .match-time {
+        font-size: 0.72rem;
+    }
+
+    .watch-now-btn {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        min-height: 44px !important;
+    }
+
+    .sources-tabs {
+        padding: 8px 10px !important;
+        gap: 6px !important;
+    }
+
+    .source-btn {
+        padding: 8px 12px !important;
+        font-size: 0.8rem !important;
+        min-height: 44px !important;
+    }
+
+    #external-stream-link {
+        font-size: 0.825rem !important;
+        padding: 10px 12px !important;
+        min-height: 48px !important;
+    }
+
+    .player-header {
+        padding: 10px;
+    }
+
+    .player-header h3 {
+        font-size: 0.95rem;
+    }
+
+    .fullscreen-btn {
+        padding: 0 10px;
+        font-size: 0.78rem;
+    }
+
+    .simulated-ad {
+        padding: 10px 8px;
+    }
+
+    .ad-modal-btn {
+        font-size: 1rem;
+        padding: 12px 20px;
+    }
+}
+
 
