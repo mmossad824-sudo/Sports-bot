@@ -1062,19 +1062,22 @@ const DIRECT_LINK_OFFERS = [
         title: "🎁 توقع نتيجة المباراة مجاناً واربح مكافأة 130$!",
         desc: "استخدم الرمز الترويجي YALLALIVE للحصول على بونص التسجيل الفوري مع 1XBET.",
         btnText: "سجل واربح الآن",
-        icon: "fa-gift"
+        icon: "fa-gift",
+        url: null
     },
     {
-        title: "🔥 اشترك في القناة الرسمية لمشاهدة بدون تقطيع وبأعلى جودة!",
+        title: "🔥 جروب التليجرام الرسمي لمشاهدة بدون تقطيع!",
         desc: "البث المباشر والملخصات والأهداف تصلك فوراً على تليجرام مجاناً.",
         btnText: "انضم الآن",
-        icon: "fa-bell"
+        icon: "fa-telegram",
+        url: "https://t.me/yalla_shoot_today_Group"
     },
     {
         title: "⚡ حمل تطبيق مشاهدة مباريات اليوم مجاناً للأندرويد والآيفون!",
         desc: "تطبيق خفيف وسريع يعرض البث المباشر لجميع المباريات والبطولات.",
         btnText: "تحميل التطبيق",
-        icon: "fa-download"
+        icon: "fa-download",
+        url: null
     }
 ];
 let currentOfferIndex = 0;
@@ -1114,6 +1117,8 @@ function startAdRefreshTimer() {
                 const offer = DIRECT_LINK_OFFERS[currentOfferIndex];
                 currentOfferIndex = (currentOfferIndex + 1) % DIRECT_LINK_OFFERS.length;
                 
+                const linkUrl = offer.url || ADS_CONFIG.popunder.directLinkUrl;
+                
                 adContainer2.innerHTML = `
                     <div class="simulated-ad">
                         <div class="ad-icon"><i class="fa-solid ${offer.icon}"></i></div>
@@ -1121,7 +1126,7 @@ function startAdRefreshTimer() {
                             <strong>${offer.title}</strong>
                             <p>${offer.desc}</p>
                         </div>
-                        <a href="${ADS_CONFIG.popunder.directLinkUrl}" target="_blank" class="ad-btn">${offer.btnText} <i class="fa-solid fa-arrow-left"></i></a>
+                        <a href="${linkUrl}" target="_blank" class="ad-btn" ${offer.url ? 'style="background: #0088cc;"' : ''}>${offer.btnText} <i class="fa-solid fa-arrow-left"></i></a>
                     </div>
                 `;
                 adContainer2.style.opacity = 1;
