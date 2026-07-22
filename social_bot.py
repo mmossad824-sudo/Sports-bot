@@ -35,14 +35,26 @@ STATE_FILE = "social_bot_state.json"
 
 # ─── RSS Feeds لأخبار كرة القدم فقط ─────────────────────────────────────────
 RSS_FEEDS = [
+    # ── عربي (كرة قدم مباشرة) ────────────────────────────────────────────────
+    {
+        "name": "كووورة",
+        "url": "https://www.kooora.com/?rss",
+        "lang": "ar"
+    },
+    {
+        "name": "FilGoal",
+        "url": "https://www.filgoal.com/articles/rss",
+        "lang": "ar"
+    },
+    {
+        "name": "Sport360 Football",
+        "url": "https://arabic.sport360.com/category/%d9%83%d8%b1%d8%a9-%d9%82%d8%af%d9%85/feed/",
+        "lang": "ar"
+    },
+    # ── إنجليزي (كرة قدم) ────────────────────────────────────────────────────
     {
         "name": "BBC Sport Football",
         "url": "https://feeds.bbci.co.uk/sport/football/rss.xml",
-        "lang": "en"
-    },
-    {
-        "name": "Goal.com",
-        "url": "https://www.goal.com/feeds/en/news",
         "lang": "en"
     },
     {
@@ -487,7 +499,7 @@ def post_fb_photo(message: str, image_path: str) -> bool:
         logger.warning("Facebook credentials missing — set FB_PAGE_TOKEN env var.")
         return False
     try:
-        url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/photos"
+        url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/photos"
         with open(image_path, "rb") as f:
             r = requests.post(
                 url,
@@ -512,7 +524,7 @@ def post_fb_text(message: str, link: str = "") -> bool:
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         return False
     try:
-        url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/feed"
+        url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/feed"
         payload = {"message": message, "access_token": FB_PAGE_TOKEN}
         if link:
             payload["link"] = link
@@ -534,7 +546,7 @@ def post_fb_video(description: str, video_path: str) -> bool:
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         return False
     try:
-        url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/videos"
+        url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/videos"
         with open(video_path, "rb") as f:
             r = requests.post(
                 url,
@@ -669,38 +681,42 @@ def fetch_rss_news(max_per_feed: int = 3) -> list[dict]:
 
 def format_news_post(item: dict) -> tuple[str, str]:
     """Returns (fb_text, tg_text) for a news item."""
-    title = item["title"]
+    title  = item["title"]
     source = item["source"]
-    link = item["link"]
-    lang = item.get("lang", "ar")
+    link   = item["link"]
+    lang   = item.get("lang", "ar")
 
     if lang == "ar":
         fb_text = (
-            f"📰 {title}\n\n"
+            f"⚽ {title}\n\n"
+            f"📌 المصدر: {source}\n"
             f"🔗 {link}\n\n"
-            f"⚽ تابع أحدث أخبار كرة القدم وشاهد المباريات مباشرة:\n"
-            f"{WEBSITE_URL}\n\n"
-            f"#كرة_القدم #أخبار_كورة #يلا_شوت"
+            f"📺 شاهد المباريات مباشرة بجودة HD:\n{WEBSITE_URL}\n\n"
+            f"▶️ يوتيوب: {YT_CHANNEL_URL}\n"
+            f"🎵 تيك توك: {TIKTOK_PROFILE_URL}\n\n"
+            f"#كرة_القدم #أخبار_كورة #يلا_شوت #بث_مباشر"
         )
         tg_text = (
-            f"📰 <b>{title}</b>\n\n"
-            f"📌 المصدر: {source}\n"
+            f"⚽ <b>{title}</b>\n\n"
+            f"📌 المصدر: <b>{source}</b>\n"
             f"🔗 <a href='{link}'>اقرأ المزيد</a>\n\n"
-            f"⚽ شاهد المباريات مباشرة:\n{WEBSITE_URL}"
+            f"📺 <a href='{WEBSITE_URL}'>شاهد المباريات مباشرة</a>"
         )
     else:
         fb_text = (
-            f"📰 {title}\n\n"
+            f"⚽ {title}\n\n"
+            f"📌 Source: {source}\n"
             f"🔗 {link}\n\n"
-            f"⚽ Watch live football matches at:\n"
-            f"{WEBSITE_URL}\n\n"
-            f"#Football #Soccer #LiveStream #YallaShoot"
+            f"📺 Watch Live HD Football:\n{WEBSITE_URL}\n\n"
+            f"▶️ YouTube: {YT_CHANNEL_URL}\n"
+            f"🎵 TikTok: {TIKTOK_PROFILE_URL}\n\n"
+            f"#Football #Soccer #LiveStream #YallaShoot #PremierLeague"
         )
         tg_text = (
-            f"📰 <b>{title}</b>\n\n"
-            f"📌 Source: {source}\n"
+            f"⚽ <b>{title}</b>\n\n"
+            f"📌 Source: <b>{source}</b>\n"
             f"🔗 <a href='{link}'>Read more</a>\n\n"
-            f"⚽ Watch live: {WEBSITE_URL}"
+            f"📺 <a href='{WEBSITE_URL}'>Watch Live Football</a>"
         )
     return fb_text, tg_text
 
