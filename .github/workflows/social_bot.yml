@@ -2,59 +2,208 @@ name: 🤖 Social Media Auto-Poster
 
 on:
   schedule:
-    # Morning schedule post: every day at 08:00 Cairo time (05:00 UTC)
+    # ──────────────────────────────────────────────────────────────────────────
+    # SCHEDULE:  08:00 Cairo = 05:00 UTC (daily)
     - cron: "0 5 * * *"
-    # Hourly match alerts: every hour
+    # ALERTS:    Every hour (match start alerts + 60-min + 10-min)
     - cron: "0 * * * *"
+    # NEWS:      Every 6 hours (08:00, 14:00, 20:00, 02:00 Cairo)
+    - cron: "0 5,11,17,23 * * *"
+    # ──────────────────────────────────────────────────────────────────────────
 
-  # Allow manual trigger for testing
+  # Manual trigger for testing
   workflow_dispatch:
     inputs:
       mode:
-        description: "Mode: schedule or alerts"
+        description: "Mode: schedule | alerts | news | all"
         required: true
         default: "alerts"
+        type: choice
+        options:
+          - alerts
+          - schedule
+          - news
+          - all
 
 jobs:
-  post-social:
+  # ── Job 1: Wake up Hugging Face Space ────────────────────────────────────────
+  wakeup-hf:
+    name: 🌅 Wake Up HF Space
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping HF Space to wake it up
+        run: |
+          echo "Pinging Hugging Face Space..."
+          curl -s --max-time 30 "${{ secrets.HF_API_URL }}/api/matches" \
+            -o /tmp/matches_check.json || true
+          echo "HF Space pinged."
+          # Show match count
+          python3 -c "
+          import json, sys
+          try:
+              with open('/tmp/matches_check.json') as f:
+                  data = json.load(f)
+              print(f'Got {len(data)} matches from HF API')
+          except Exception as e:
+              print(f'Could not parse response: {e}')
+          " || true
+
+  # ── Job 2: Daily Schedule (08:00 Cairo) ──────────────────────────────────────
+  daily-schedule:
+    name: 📅 Daily Schedule Post
+    needs: wakeup-hf
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: |
+      github.event.schedule == '0 5 * * *' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'schedule') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'all')
 
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python
+      - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: 📚 Install Dependencies
         run: |
           pip install requests Pillow arabic-reshaper python-bidi
 
-      - name: 🌐 Sync matches DB from Hugging Face
-        run: |
-          curl -L "https://mmossad824-sports-bot.hf.space/api/matches" \
-            -o /dev/null --max-time 10 || true
-        continue-on-error: true
+      - name: ♻️ Restore State Cache
+        uses: actions/cache@v4
+        with:
+          path: social_bot_state.json
+          key: social-bot-state-${{ github.run_id }}
+          restore-keys: |
+            social-bot-state-
 
-      - name: 📅 Run Daily Schedule (08:00 Cairo only)
-        if: github.event.schedule == '0 5 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'schedule')
+      - name: 📅 Post Daily Schedule
         env:
-          FB_PAGE_TOKEN:      ${{ secrets.FB_PAGE_TOKEN }}
-          FB_PAGE_ID:         ${{ secrets.FB_PAGE_ID }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          FB_PAGE_TOKEN:       ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID:          ${{ secrets.FB_PAGE_ID }}
+          TELEGRAM_BOT_TOKEN:  ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-          WEBSITE_URL:        ${{ secrets.WEBSITE_URL }}
+          WEBSITE_URL:         ${{ secrets.WEBSITE_URL }}
+          HF_API_URL:          ${{ secrets.HF_API_URL }}
+          YOUTUBE_CLIENT_ID:    ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: python social_bot.py schedule
 
-      - name: 🔔 Run Match Alerts (every hour)
-        if: github.event.schedule == '0 * * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'alerts')
+      - name: 💾 Save State Cache
+        uses: actions/cache@v4
+        if: always()
+        with:
+          path: social_bot_state.json
+          key: social-bot-state-${{ github.run_id }}
+
+  # ── Job 3: Hourly Match Alerts ───────────────────────────────────────────────
+  match-alerts:
+    name: 🔔 Match Alerts
+    needs: wakeup-hf
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event.schedule == '0 * * * *' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'alerts') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'all')
+
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 📚 Install Dependencies
+        run: |
+          pip install requests Pillow arabic-reshaper python-bidi
+
+      - name: ♻️ Restore State Cache
+        uses: actions/cache@v4
+        with:
+          path: social_bot_state.json
+          key: social-bot-state-${{ github.run_id }}
+          restore-keys: |
+            social-bot-state-
+
+      - name: 🔔 Run Match Alerts
         env:
-          FB_PAGE_TOKEN:      ${{ secrets.FB_PAGE_TOKEN }}
-          FB_PAGE_ID:         ${{ secrets.FB_PAGE_ID }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          FB_PAGE_TOKEN:       ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID:          ${{ secrets.FB_PAGE_ID }}
+          TELEGRAM_BOT_TOKEN:  ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-          WEBSITE_URL:        ${{ secrets.WEBSITE_URL }}
+          WEBSITE_URL:         ${{ secrets.WEBSITE_URL }}
+          HF_API_URL:          ${{ secrets.HF_API_URL }}
+          YOUTUBE_CLIENT_ID:    ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: python social_bot.py alerts
+
+      - name: 💾 Save State Cache
+        uses: actions/cache@v4
+        if: always()
+        with:
+          path: social_bot_state.json
+          key: social-bot-state-${{ github.run_id }}
+
+  # ── Job 4: News Poster (every 6 hours) ──────────────────────────────────────
+  news-poster:
+    name: 📰 News Post
+    needs: wakeup-hf
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event.schedule == '0 5,11,17,23 * * *' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'news') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'all')
+
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 📚 Install Dependencies
+        run: |
+          pip install requests Pillow arabic-reshaper python-bidi
+
+      - name: ♻️ Restore State Cache
+        uses: actions/cache@v4
+        with:
+          path: social_bot_state.json
+          key: social-bot-state-${{ github.run_id }}
+          restore-keys: |
+            social-bot-state-
+
+      - name: 📰 Post Football News
+        env:
+          FB_PAGE_TOKEN:       ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID:          ${{ secrets.FB_PAGE_ID }}
+          TELEGRAM_BOT_TOKEN:  ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          WEBSITE_URL:         ${{ secrets.WEBSITE_URL }}
+          HF_API_URL:          ${{ secrets.HF_API_URL }}
+          YOUTUBE_CLIENT_ID:    ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: python social_bot.py news
+
+      - name: 💾 Save State Cache
+        uses: actions/cache@v4
+        if: always()
+        with:
+          path: social_bot_state.json
+          key: social-bot-state-${{ github.run_id }}
