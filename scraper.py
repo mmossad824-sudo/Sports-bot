@@ -95,7 +95,8 @@ def init_db():
         ("telegram_end_sent", "INTEGER DEFAULT 0"),
         ("last_telegram_scoreA", "TEXT"),
         ("last_telegram_scoreB", "TEXT"),
-        ("telegram_embed_url", "TEXT")
+        ("telegram_embed_url", "TEXT"),
+        ("mid_match_clip_uploaded", "INTEGER DEFAULT 0")
     ]
     for col_name, col_type in columns:
         try:
@@ -151,8 +152,8 @@ def save_matches_to_db(matches, match_date):
             # Match doesn't exist, insert new row and initialize last scores to prevent false goal alerts
             cursor.execute("""
                 INSERT INTO matches 
-                (id, tournament, teamA, teamB, scoreA, scoreB, time, status, channel, round, logoA, logoB, link, stream_type, stream_url, match_date, updated_at, telegram_start_sent, telegram_half_sent, telegram_end_sent, last_telegram_scoreA, last_telegram_scoreB)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?)
+                (id, tournament, teamA, teamB, scoreA, scoreB, time, status, channel, round, logoA, logoB, link, stream_type, stream_url, match_date, updated_at, telegram_start_sent, telegram_half_sent, telegram_end_sent, last_telegram_scoreA, last_telegram_scoreB, mid_match_clip_uploaded)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, 0)
             """, (
                 match_id, m['tournament'], m['teamA'], m['teamB'], m['scoreA'], m['scoreB'],
                 m['time'], m['status'], m['channel'], m['round'], m['logoA'], m['logoB'],
@@ -607,8 +608,53 @@ def update_finished_matches_highlights():
     conn.commit()
     conn.close()
 
+def catch_live_goals():
+    """Find live matches and fetch mid-match clips (goals) to upload immediately."""
+    init_db()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    from datetime import timedelta
+    cairo_now = datetime.utcnow() + timedelta(hours=3)
+    cairo_today = cairo_now.strftime("%Y-%m-%d")
+    
+    # Matches that are currently live and haven't had a clip uploaded yet
+    cursor.execute("""
+        SELECT id, teamA, teamB 
+        FROM matches 
+        WHERE (status = 'جارية الآن' OR status LIKE '%الشوط%')
+          AND mid_match_clip_uploaded = 0
+          AND (match_date = ? OR match_date IS NULL)
+    """, (cairo_today,))
+    
+    live_matches = cursor.fetchall()
+    if not live_matches:
+        conn.close()
+        return
+        
+    print(f"[Mid-Match Clips] Checking {len(live_matches)} live matches for goals...")
+    
+    for match_id, team_a, team_b in live_matches:
+        embed_url = get_scorebat_embed_url(team_a, team_b)
+        if embed_url:
+            print(f"[Mid-Match Clips] Found clip for {team_a} VS {team_b} -> {embed_url}")
+            
+            # Spawn background uploader
+            import subprocess
+            import sys
+            script_path = os.path.join(os.path.dirname(__file__), "upload_match_highlights.py")
+            subprocess.Popen([sys.executable, script_path, match_id, team_a, team_b, embed_url])
+            
+            # Mark as uploaded so we don't spam
+            cursor.execute("UPDATE matches SET mid_match_clip_uploaded = 1 WHERE id = ?", (match_id,))
+            
+    conn.commit()
+    conn.close()
+
+
 if __name__ == "__main__":
     init_db()
     scrape_yallakora()
     update_live_streams()
+    catch_live_goals()
     update_finished_matches_highlights()
