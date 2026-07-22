@@ -90,6 +90,9 @@ jobs:
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           WEBSITE_URL:         ${{ secrets.WEBSITE_URL }}
           HF_API_URL:          ${{ secrets.HF_API_URL }}
+          YOUTUBE_CLIENT_ID:    ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: python social_bot.py schedule
 
       - name: 💾 Save State Cache
@@ -140,6 +143,9 @@ jobs:
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           WEBSITE_URL:         ${{ secrets.WEBSITE_URL }}
           HF_API_URL:          ${{ secrets.HF_API_URL }}
+          YOUTUBE_CLIENT_ID:    ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: python social_bot.py alerts
 
       - name: 💾 Save State Cache
@@ -190,6 +196,9 @@ jobs:
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           WEBSITE_URL:         ${{ secrets.WEBSITE_URL }}
           HF_API_URL:          ${{ secrets.HF_API_URL }}
+          YOUTUBE_CLIENT_ID:    ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: python social_bot.py news
 
       - name: 💾 Save State Cache
