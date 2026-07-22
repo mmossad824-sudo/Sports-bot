@@ -27,7 +27,7 @@ jobs:
           
       - name: 🎥 Download Original Highlight
         run: |
-          curl -L "https://6b47031916f6599a-197-150-118-96.serveousercontent.com/spain_argentina_goal.mp4" -o /tmp/spain_argentina_goal.mp4
+          curl -L "https://h.uguu.se/WkPZpAKo.mp4" -o /tmp/spain_argentina_goal.mp4
 
       - name: 🚀 Process and Upload to all platforms
         env:
