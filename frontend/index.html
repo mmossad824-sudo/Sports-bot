@@ -4,22 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f1420">
-    <meta name="description" content="يلا شوت - مشاهدة مباريات اليوم بث مباشر بدون تقطيع بجودة عالية">
-    <meta name="keywords" content="يلا شوت, بث مباشر, مباريات اليوم, كورة لايف, yalla shoot">
-    <meta property="og:title" content="يلا شوت - بث مباشر مباريات اليوم">
-    <meta property="og:description" content="شاهد مباريات اليوم بث مباشر مجاناً">
-    <title>يلا شوت - بث مباشر مباريات اليوم</title>
+
+    <!-- Primary Meta Tags (Bilingual) -->
+    <title>يلا شوت - بث مباشر مباريات اليوم | Yalla Shoot - Live Football Today</title>
+    <meta name="description" content="يلا شوت - مشاهدة مباريات اليوم بث مباشر بدون تقطيع | Watch today's football matches live in HD, free.">
+    <meta name="keywords" content="يلا شوت, بث مباشر, مباريات اليوم, كورة لايف, yalla shoot, live football, watch football online, premier league live, champions league live, live stream">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://yalla-shoot-today.vercel.app">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://yalla-shoot-today.vercel.app">
+    <meta property="og:title" content="Yalla Shoot - Watch Live Football Today | يلا شوت بث مباشر">
+    <meta property="og:description" content="Watch today's biggest football matches in HD. Premier League, Champions League, La Liga, Serie A & more. Free live streams.">
+    <meta property="og:image" content="https://yalla-shoot-today.vercel.app/og-image.jpg">
+    <meta property="og:locale" content="ar_AR">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta property="fb:app_id" content="2045227012779712">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Yalla Shoot - Live Football Streams">
+    <meta name="twitter:description" content="Free HD live football streams. No buffering. Watch now!">
+    <meta name="twitter:image" content="https://yalla-shoot-today.vercel.app/og-image.jpg">
+
+    <!-- Hreflang for bilingual -->
+    <link rel="alternate" hreflang="ar" href="https://yalla-shoot-today.vercel.app">
+    <link rel="alternate" hreflang="en" href="https://yalla-shoot-today.vercel.app">
+    <link rel="alternate" hreflang="x-default" href="https://yalla-shoot-today.vercel.app">
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Yalla Shoot - يلا شوت",
+      "url": "https://yalla-shoot-today.vercel.app",
+      "description": "Live football streaming directory. Watch Premier League, Champions League, La Liga and more.",
+      "inLanguage": ["ar", "en"],
+      "sameAs": [
+        "https://web.facebook.com/profile.php?id=61592307475993",
+        "https://t.me/yalla_shoot_today_Group"
+      ]
+    }
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-    <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="style.css?v=4.0">
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
@@ -57,6 +96,11 @@
             <span>يلا <span class="hdr-logo-accent">شوت</span></span>
         </a>
         <div class="hdr-actions">
+            <!-- Language Toggle Button -->
+            <button class="hdr-icon-btn lang-toggle-btn" id="lang-toggle-btn"
+                    aria-label="Switch Language" title="Switch Language / تغيير اللغة">
+                English
+            </button>
             <button class="hdr-icon-btn" id="search-toggle-btn" aria-label="بحث">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
@@ -94,6 +138,23 @@
 
 <!-- ══ MAIN ══ -->
 <main class="site-main">
+    <!-- Facebook Follow Strip -->
+    <div class="fb-follow-strip" id="fb-follow-strip">
+        <div class="fb-strip-left">
+            <i class="fa-brands fa-facebook fb-strip-icon"></i>
+            <div class="fb-strip-text">
+                <strong id="fb-strip-label">تابعنا على فيسبوك للتنبيهات الفورية</strong>
+                <small id="fb-strip-sub">Yalla Shoot Today — أخبار وأهداف مباشرة</small>
+            </div>
+        </div>
+        <a href="https://web.facebook.com/profile.php?id=61592307475993"
+           target="_blank" rel="noopener noreferrer"
+           class="fb-strip-btn" id="fb-strip-btn">
+            <i class="fa-brands fa-facebook-f"></i>
+            <span id="fb-strip-btn-text">أعجبني</span>
+        </a>
+    </div>
+
     <!-- Date Tabs (Desktop) -->
     <div class="date-strip">
         <button class="ds-btn" data-tab="yesterday"><i class="fa-solid fa-rotate-left"></i> الأمس</button>
@@ -218,7 +279,7 @@
                 </div>
             </div>
 
-            <!-- Ad Strip (Telegram Promotion) -->
+            <!-- Ad & Social Media Strip -->
             <div class="ad-strip">
                 <span class="ad-strip-label">رسمي</span>
                 <div class="ad-cards">
@@ -230,6 +291,22 @@
                         </div>
                         <a href="https://t.me/yalla_shoot_today_Group" target="_blank" class="ad-card-btn" style="background: #0088cc;">انضم للجروب</a>
                     </div>
+                    <div class="ad-card">
+                        <i class="fa-brands fa-youtube" style="color: #ff0000;"></i>
+                        <div class="ad-card-text">
+                            <strong>قناة اليوتيوب الرسمية - YouTube Shorts</strong>
+                            <small>شاهد أهداف وملخصات أهم المباريات في ثوانٍ</small>
+                        </div>
+                        <a href="https://youtube.com/@YallaShootTodayOfficial" target="_blank" class="ad-card-btn" style="background: #ff0000;">اشترك الآن</a>
+                    </div>
+                    <div class="ad-card">
+                        <i class="fa-brands fa-tiktok" style="color: #fe2c55;"></i>
+                        <div class="ad-card-text">
+                            <strong>حساب التيك توك الرسمي - TikTok Highlights</strong>
+                            <small>أجمل اللقطات والمهارات الرياضية اليومية</small>
+                        </div>
+                        <a href="https://tiktok.com/@yallashoottodayofficial" target="_blank" class="ad-card-btn" style="background: #fe2c55;">متابعة</a>
+                    </div>
                 </div>
             </div>
 
@@ -239,23 +316,56 @@
 
 <!-- ══ FLOATING SOCIALS ══ -->
 <div class="floating-socials">
-    <a href="https://web.facebook.com/profile.php?id=61592307475993" target="_blank" class="floating-btn fb-btn">
+    <a href="https://web.facebook.com/profile.php?id=61592307475993" target="_blank"
+       rel="noopener noreferrer" class="floating-btn fb-btn"
+       aria-label="Follow us on Facebook">
         <i class="fa-brands fa-facebook-f"></i>
         <span>فيسبوك</span>
     </a>
-    <a href="https://t.me/yalla_shoot_today_Group" target="_blank" class="floating-btn tg-btn">
+    <a href="https://t.me/yalla_shoot_today_Group" target="_blank"
+       rel="noopener noreferrer" class="floating-btn tg-btn"
+       aria-label="Join our Telegram group">
         <i class="fa-brands fa-telegram"></i>
         <span>جروب التليجرام</span>
+    </a>
+    <a href="https://youtube.com/@YallaShootTodayOfficial" target="_blank"
+       rel="noopener noreferrer" class="floating-btn yt-btn"
+       aria-label="Subscribe on YouTube">
+        <i class="fa-brands fa-youtube"></i>
+        <span>يوتيوب</span>
+    </a>
+    <a href="https://tiktok.com/@yallashoottodayofficial" target="_blank"
+       rel="noopener noreferrer" class="floating-btn tt-btn"
+       aria-label="Follow on TikTok">
+        <i class="fa-brands fa-tiktok"></i>
+        <span>تيك توك</span>
     </a>
 </div>
 
 <!-- ══ FOOTER ══ -->
 <footer class="site-footer">
     <div class="footer-socials">
-        <a href="https://web.facebook.com/profile.php?id=61592307475993" target="_blank"><i class="fa-brands fa-facebook"></i></a>
-        <a href="https://t.me/yalla_shoot_today_Group" target="_blank"><i class="fa-brands fa-telegram"></i></a>
+        <a href="https://web.facebook.com/profile.php?id=61592307475993" target="_blank"
+           rel="noopener noreferrer" aria-label="Facebook Page">
+            <i class="fa-brands fa-facebook"></i>
+        </a>
+        <a href="https://t.me/yalla_shoot_today_Group" target="_blank"
+           rel="noopener noreferrer" aria-label="Telegram Group">
+            <i class="fa-brands fa-telegram"></i>
+        </a>
+        <a href="https://youtube.com/@YallaShootTodayOfficial" target="_blank"
+           rel="noopener noreferrer" aria-label="YouTube Channel">
+            <i class="fa-brands fa-youtube"></i>
+        </a>
+        <a href="https://tiktok.com/@yallashoottodayofficial" target="_blank"
+           rel="noopener noreferrer" aria-label="TikTok Profile">
+            <i class="fa-brands fa-tiktok"></i>
+        </a>
     </div>
     <p>© 2026 يلا شوت — الموقع دليل رياضي للبث المباشر</p>
     <small>لا نستضيف أي محتوى مرئي على خوادمنا بل نوفر روابط لبثوث خارجية.</small>
 </footer>
+
+<script src="app.js?v=4.0"></script>
 </html>
+
