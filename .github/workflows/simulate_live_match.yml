@@ -22,7 +22,14 @@ jobs:
           pip install requests Pillow google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client arabic-reshaper python-bidi
           
       - name: 🎥 Generate Test Video
-        run: ffmpeg -f lavfi -i color=c=blue:s=1080x1920:d=10 -c:v libx264 -t 10 /tmp/test_vid.mp4
+        run: |
+          pip install yt-dlp
+          yt-dlp "ytsearch1:short football goal highlight" --max-downloads 1 -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --download-sections "*00:00:00-00:00:20" -o /tmp/raw_vid.mp4 || true
+          if [ -f /tmp/raw_vid.mp4 ]; then
+            python3 video_processor.py /tmp/raw_vid.mp4 /tmp/test_vid.mp4 "Test Match: Real Madrid VS Bayern" || cp /tmp/raw_vid.mp4 /tmp/test_vid.mp4
+          else
+            ffmpeg -f lavfi -i color=c=blue:s=1080x1920:d=10 -c:v libx264 -t 10 /tmp/test_vid.mp4
+          fi
 
       - name: 🚀 Process and Upload
         env:

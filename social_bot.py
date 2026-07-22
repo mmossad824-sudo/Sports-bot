@@ -493,6 +493,11 @@ def post_fb_photo(message: str, image_path: str) -> bool:
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         logger.warning("Facebook credentials missing — set FB_PAGE_TOKEN env var.")
         return False
+        
+    tg_link = "\n\n📱 تابع تغطية الأهداف لحظة بلحظة على تليجرام:\nhttps://t.me/yalla_shoot_today_Group"
+    if "t.me" not in message:
+        message += tg_link
+
     try:
         url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/photos"
         with open(image_path, "rb") as f:
@@ -518,6 +523,11 @@ def post_fb_text(message: str, link: str = "") -> bool:
     """Post a text (+ optional link) post to Facebook page."""
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         return False
+        
+    tg_link = "\n\n📱 تابع تغطية الأهداف لحظة بلحظة على تليجرام:\nhttps://t.me/yalla_shoot_today_Group"
+    if "t.me" not in message:
+        message += tg_link
+
     try:
         url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/feed"
         payload = {"message": message, "access_token": FB_PAGE_TOKEN}
@@ -540,6 +550,11 @@ def post_fb_video(description: str, video_path: str) -> bool:
     """Post a short video or Reel to Facebook Page."""
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         return False
+        
+    tg_link = "\n\n📱 اشترك في تليجرام لمتابعة كل جديد:\nhttps://t.me/yalla_shoot_today_Group"
+    if "t.me" not in description:
+        description += tg_link
+
     try:
         url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/videos"
         with open(video_path, "rb") as f:
