@@ -1,3 +1,257 @@
+// ══════════════════════════════════════════════════════════════════════════════
+// BILINGUAL SUPPORT — Arabic (RTL) ↔ English (LTR)
+// ══════════════════════════════════════════════════════════════════════════════
+const TRANSLATIONS = {
+    ar: {
+        siteName:       'يلا شوت',
+        siteAccent:     'شوت',
+        tabToday:       'مباريات اليوم',
+        tabYesterday:   'مباريات الأمس',
+        tabTomorrow:    'مباريات الغد',
+        titleToday:     'مباريات اليوم بث مباشر',
+        titleYesterday: 'مباريات الأمس',
+        titleTomorrow:  'مباريات الغد',
+        btnToday:       'اليوم',
+        btnYesterday:   'الأمس',
+        btnTomorrow:    'الغد',
+        loading:        'جاري تحميل المباريات...',
+        noMatches:      'لا توجد مباريات مجدولة في هذا اليوم',
+        watchLive:      'مشاهدة مباشرة',
+        live:           'مباشر',
+        finished:       'انتهت',
+        notStarted:     'لم تبدأ',
+        halfTime:       'استراحة',
+        searchPlaceholder: 'ابحث عن مباراة أو فريق...',
+        noStream:       'البث غير متوفر حالياً، يبدأ قبل المباراة بـ 15 دقيقة',
+        switchLang:     'English',
+        telegramBtn:    'قناة التليجرام',
+        facebookBtn:    'فيسبوك',
+        youtubeBtn:     'يوتيوب',
+        joinTelegram:   'انضم للجروب',
+        tickerText:     '🔥 أهلاً بكم في يلا شوت - تغطية حصرية ومباشرة لأهم مباريات اليوم بأعلى جودة وبدون تقطيع! 🔥',
+        breaking:       'عاجل',
+        footerText:     '© 2026 يلا شوت — الموقع دليل رياضي للبث المباشر',
+        footerSub:      'لا نستضيف أي محتوى مرئي على خوادمنا بل نوفر روابط لبثوث خارجية.',
+        fbStripLabel:   'تابعنا على فيسبوك للتنبيهات الفورية',
+        fbStripSub:     'Yalla Shoot Today — أخبار وأهداف مباشرة',
+        fbStripBtn:     'أعجبني',
+        sideNavTitle:   'يلا شوت',
+        liveBadge:      'مباشر',
+        analysis:       'تحليل وتوقعات المباراة',
+        liveChat:       'الدردشة الحية وتوقعات الجماهير',
+        teamA:          'الفريق الأول',
+        teamB:          'الفريق الثاني',
+        streamBlack:    'شاشة سوداء؟ اضغط هنا للمشاهدة مباشرة',
+        fullscreen:     'ملء الشاشة',
+        close:          'إغلاق',
+        official:       'رسمي',
+        tgGroupLabel:   'جروب التليجرام الرسمي - Yalla Shoot Today Group',
+        tgGroupSub:     'تغطية حصرية، أهداف، ومباريات بدون تقطيع مجاناً',
+        predict:        'اضغط لبدء البث المباشر',
+        predictSub:     'اضغط الزر',
+        predictTimes:   'مرات لبدء المشاهدة المجانية',
+        watchNow:       'شاهد الآن مجاناً',
+    },
+    en: {
+        siteName:       'Yalla Shoot',
+        siteAccent:     'Shoot',
+        tabToday:       "Today's Matches",
+        tabYesterday:   "Yesterday's Matches",
+        tabTomorrow:    "Tomorrow's Matches",
+        titleToday:     'Live Football Matches Today',
+        titleYesterday: "Yesterday's Results",
+        titleTomorrow:  "Tomorrow's Schedule",
+        btnToday:       'Today',
+        btnYesterday:   'Yesterday',
+        btnTomorrow:    'Tomorrow',
+        loading:        'Loading matches...',
+        noMatches:      'No matches scheduled for this day',
+        watchLive:      'Watch Live',
+        live:           'LIVE',
+        finished:       'Full Time',
+        notStarted:     'Not Started',
+        halfTime:       'Half Time',
+        searchPlaceholder: 'Search match or team...',
+        noStream:       'Stream not available yet. Starts 15 minutes before kick-off.',
+        switchLang:     'عربي',
+        telegramBtn:    'Telegram Channel',
+        facebookBtn:    'Facebook',
+        youtubeBtn:     'YouTube',
+        joinTelegram:   'Join Group',
+        tickerText:     '🔥 Welcome to Yalla Shoot — HD live football streams, no buffering! Today\'s biggest matches covered. 🔥',
+        breaking:       'Breaking',
+        footerText:     '© 2026 Yalla Shoot — Sports streaming directory',
+        footerSub:      'We do not host any video content. We provide links to external streams.',
+        fbStripLabel:   'Follow us on Facebook for live alerts',
+        fbStripSub:     'Yalla Shoot Today — Live goals & match updates',
+        fbStripBtn:     'Like Page',
+        sideNavTitle:   'Yalla Shoot',
+        liveBadge:      'LIVE',
+        analysis:       'Match Analysis & Predictions',
+        liveChat:       'Live Chat & Fan Predictions',
+        teamA:          'Home Team',
+        teamB:          'Away Team',
+        streamBlack:    'Black screen? Click here to watch',
+        fullscreen:     'Fullscreen',
+        close:          'Close',
+        official:       'Official',
+        tgGroupLabel:   'Official Telegram Group — Yalla Shoot Today',
+        tgGroupSub:     'Exclusive coverage, goals, and HD streams for free',
+        predict:        'Tap to Start Live Stream',
+        predictSub:     'Tap the button',
+        predictTimes:   'times to watch for free',
+        watchNow:       'Watch Now Free',
+    }
+};
+
+let currentLang = localStorage.getItem('yalla_lang') || 'ar';
+
+function t(key) {
+    return (TRANSLATIONS[currentLang] || TRANSLATIONS['ar'])[key] || key;
+}
+
+function applyLanguage() {
+    const isAr = currentLang === 'ar';
+    document.documentElement.lang = currentLang;
+    document.documentElement.dir  = isAr ? 'rtl' : 'ltr';
+    document.body.classList.toggle('lang-en', !isAr);
+
+    // Header logo
+    const logoSpan = document.querySelector('.hdr-logo span');
+    if (logoSpan) logoSpan.innerHTML = isAr
+        ? 'يلا <span class="hdr-logo-accent">شوت</span>'
+        : 'Yalla <span class="hdr-logo-accent">Shoot</span>';
+
+    // Language toggle button
+    const langBtn = document.getElementById('lang-toggle-btn');
+    if (langBtn) langBtn.textContent = t('switchLang');
+
+    // Search placeholder
+    const srch = document.getElementById('search-input');
+    if (srch) srch.placeholder = t('searchPlaceholder');
+
+    // Date strip buttons
+    const btnMap = { yesterday: 'btnYesterday', today: 'btnToday', tomorrow: 'btnTomorrow' };
+    document.querySelectorAll('.ds-btn[data-tab]').forEach(btn => {
+        const key = btnMap[btn.getAttribute('data-tab')];
+        if (key) btn.innerHTML = btn.innerHTML.replace(/[\u0600-\u06FF\w]+[\s\S]*$/, t(key));
+    });
+
+    // Side nav tabs
+    document.querySelectorAll('.snav-tab[data-tab]').forEach(a => {
+        const tab = a.getAttribute('data-tab');
+        const icon = a.querySelector('i');
+        const iconHtml = icon ? icon.outerHTML + ' ' : '';
+        const tabKeys = { yesterday: 'tabYesterday', today: 'tabToday', tomorrow: 'tabTomorrow' };
+        if (tabKeys[tab]) a.innerHTML = iconHtml + t(tabKeys[tab]);
+    });
+
+    // Side nav header
+    const sideNavTitle = document.querySelector('.side-nav-header span');
+    if (sideNavTitle) sideNavTitle.textContent = t('sideNavTitle');
+
+    // News ticker
+    const ticker = document.querySelector('.ticker-scroll p');
+    if (ticker) ticker.textContent = t('tickerText');
+    const tickerLabel = document.querySelector('.ticker-label');
+    if (tickerLabel) tickerLabel.textContent = t('breaking');
+
+    // No matches text
+    const noMatchEl = document.querySelector('#no-matches p');
+    if (noMatchEl) noMatchEl.textContent = t('noMatches');
+
+    // Loading text
+    const loadingP = document.querySelector('#loading-spinner p');
+    if (loadingP) loadingP.textContent = t('loading');
+
+    // No stream placeholder
+    const noStreamP = document.querySelector('#no-stream-placeholder p');
+    if (noStreamP) noStreamP.textContent = t('noStream');
+
+    // Live badge in player
+    const liveBadgeSm = document.querySelector('.live-badge-sm');
+    if (liveBadgeSm) liveBadgeSm.innerHTML = '<i class="fa-solid fa-circle"></i> ' + t('liveBadge');
+
+    // External stream btn
+    const extStream = document.querySelector('#external-stream-link span');
+    if (extStream) extStream.textContent = t('streamBlack');
+
+    // Analysis header
+    const analysisH3 = document.querySelector('.analysis-hdr h3');
+    if (analysisH3) analysisH3.textContent = t('analysis');
+
+    // Live chat header
+    const chatH3 = document.querySelector('.chat-hdr h3');
+    if (chatH3) chatH3.textContent = t('liveChat');
+
+    // Telegram ad card
+    const tgLabel = document.querySelector('.ad-card strong');
+    if (tgLabel) tgLabel.textContent = t('tgGroupLabel');
+    const tgSub = document.querySelector('.ad-card small');
+    if (tgSub) tgSub.textContent = t('tgGroupSub');
+    const tgBtn = document.querySelector('.ad-card-btn');
+    if (tgBtn) tgBtn.textContent = t('joinTelegram');
+
+    // Floating buttons
+    const fbBtn = document.querySelector('.floating-btn.fb-btn span');
+    if (fbBtn) fbBtn.textContent = t('facebookBtn');
+    const tgFloatBtn = document.querySelector('.floating-btn.tg-btn span');
+    if (tgFloatBtn) tgFloatBtn.textContent = t('telegramBtn');
+    const ytFloatBtn = document.querySelector('.floating-btn.yt-btn span');
+    if (ytFloatBtn) ytFloatBtn.textContent = t('youtubeBtn');
+
+    // Footer
+    const footerP = document.querySelector('.site-footer p');
+    if (footerP) footerP.textContent = t('footerText');
+    const footerSm = document.querySelector('.site-footer small');
+    if (footerSm) footerSm.textContent = t('footerSub');
+
+    // Facebook follow strip
+    const fbStripLabel = document.getElementById('fb-strip-label');
+    if (fbStripLabel) fbStripLabel.textContent = t('fbStripLabel');
+    const fbStripSub = document.getElementById('fb-strip-sub');
+    if (fbStripSub) fbStripSub.textContent = t('fbStripSub');
+    const fbStripBtnText = document.getElementById('fb-strip-btn-text');
+    if (fbStripBtnText) fbStripBtnText.textContent = t('fbStripBtn');
+
+    // Ad click modal
+    const admTitle = document.querySelector('.adm-title');
+    if (admTitle) admTitle.textContent = t('predict');
+    const admBtn = document.querySelector('.adm-btn');
+    if (admBtn) admBtn.innerHTML = '<i class="fa-solid fa-play"></i> ' + t('watchNow');
+
+    // Official label in ad strip
+    const officialLabel = document.querySelector('.ad-strip-label');
+    if (officialLabel) officialLabel.textContent = t('official');
+
+    // Fullscreen/Close buttons in player
+    const fsBtn = document.getElementById('fullscreen-player');
+    if (fsBtn) fsBtn.title = t('fullscreen');
+    const closeBtn = document.getElementById('close-player');
+    if (closeBtn) closeBtn.title = t('close');
+
+    // Meta title & description
+    document.title = isAr
+        ? 'يلا شوت - بث مباشر مباريات اليوم'
+        : 'Yalla Shoot - Watch Live Football Today';
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.content = isAr
+        ? 'يلا شوت - مشاهدة مباريات اليوم بث مباشر بدون تقطيع بجودة عالية'
+        : 'Yalla Shoot — Watch today\'s football matches live in HD, no buffering, for free.';
+
+    // Update date badge if needed
+    updateDateBadge();
+}
+
+function toggleLanguage() {
+    currentLang = currentLang === 'ar' ? 'en' : 'ar';
+    localStorage.setItem('yalla_lang', currentLang);
+    applyLanguage();
+    // Re-render matches with new language
+    if (allMatches.length > 0) displayMatchesForActiveTab();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // API Configuration
 // Replace this URL with your actual Hugging Face Space API URL once deployed!
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -83,11 +337,16 @@ function updateDateBadge() {
     if (activeTab === 'yesterday') offset = -1;
     if (activeTab === 'tomorrow')  offset = 1;
     cairoTime.setDate(cairoTime.getDate() + offset);
-    const dateStr = cairoTime.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const locale = currentLang === 'en' ? 'en-US' : 'ar-EG';
+    const dateStr = cairoTime.toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     badge.innerText = dateStr;
     if (titleEl) {
-        const labels = { today: 'مباريات اليوم بث مباشر', yesterday: 'مباريات الأمس', tomorrow: 'مباريات الغد' };
-        titleEl.innerText = labels[activeTab] || 'مباريات اليوم';
+        const labels = {
+            today:     t('titleToday'),
+            yesterday: t('titleYesterday'),
+            tomorrow:  t('titleTomorrow')
+        };
+        titleEl.innerText = labels[activeTab] || t('titleToday');
     }
 }
 
@@ -268,7 +527,7 @@ async function fetchMatches() {
         if (!response.ok) throw new Error('Failed to fetch matches');
         
         const data = await response.json();
-        allMatches = data.matches || [];
+        allMatches = Array.isArray(data) ? data : (data.matches || []);
         displayMatchesForActiveTab();
         
         // Handle SEO URL: ?match=id
@@ -1206,4 +1465,15 @@ document.addEventListener('fullscreenchange', () => {
             fsBtn.innerHTML = '<i class="fa-solid fa-expand"></i> ملء الشاشة';
         }
     }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INIT LANGUAGE ON LOAD
+// ══════════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    // Apply saved language on first load
+    applyLanguage();
+    // Wire up language toggle button (added to header in HTML)
+    const langBtn = document.getElementById('lang-toggle-btn');
+    if (langBtn) langBtn.addEventListener('click', toggleLanguage);
 });
