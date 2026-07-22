@@ -41,8 +41,8 @@ def process_video_for_shorts(input_path: str, output_path: str, title: str = "ي
     filter_complex = (
         "[0:v]split=2[bg][fg];"
         "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:5,setpts=PTS/1.05[bg_blurred];"
-        # Evasion on foreground: slight color tweak, scale to 1080 to maintain high quality without weird mirroring
-        "[fg]eq=contrast=1.05:saturation=1.1,scale=1080:-1,setpts=PTS/1.05[fg_scaled];"
+        # Strong evasion on foreground: flip, color eq, zoom in slightly to hide logos
+        "[fg]hflip,eq=contrast=1.15:brightness=0.02:saturation=1.2,scale=1150:-1,crop=1080:608,setpts=PTS/1.05[fg_scaled];"
         "[bg_blurred][fg_scaled]overlay=0:(H-h)/2[base];"
         "[base]drawbox=y=0:color=black@0.7:width=iw:height=180:t=fill,"
         "drawbox=y=ih-180:color=black@0.7:width=iw:height=180:t=fill[v_boxed];"
