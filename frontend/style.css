@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════
-   YallaShoot — Complete Style v3.0
-   Mobile-first, card layout like yallashoot.video
-   Dark theme with green accent
+   YallaShoot — Complete Style v4.0
+   Bilingual: Arabic (RTL) + English (LTR)
+   Mobile-first, dark theme with green accent
 ═══════════════════════════════════════════════════ */
 
 /* ── Tokens ── */
@@ -19,6 +19,7 @@
     --text3:    #64748b;
     --live:     #ff3366;
     --font:     'Cairo', sans-serif;
+    --font-en:  'Inter', 'Cairo', sans-serif;
     --hdr-h:    54px;
     --radius:   10px;
     --shadow:   0 4px 20px rgba(0,0,0,0.35);
@@ -104,6 +105,43 @@ button { cursor: pointer; font-family: var(--font); -webkit-tap-highlight-color:
     transition: var(--transition);
 }
 .hdr-icon-btn:hover, .hdr-icon-btn:active { background: var(--bg3); color: var(--accent); }
+
+/* Language Toggle Button */
+.lang-toggle-btn {
+    width: auto !important;
+    padding: 0 10px !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    font-family: var(--font-en) !important;
+    letter-spacing: 0.3px;
+    border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    border-radius: 6px !important;
+    color: var(--accent) !important;
+    background: rgba(16, 185, 129, 0.08) !important;
+    transition: var(--transition);
+    white-space: nowrap;
+    text-transform: uppercase;
+    min-width: 52px;
+}
+.lang-toggle-btn:hover, .lang-toggle-btn:active {
+    background: rgba(16, 185, 129, 0.2) !important;
+    border-color: var(--accent) !important;
+    color: #fff !important;
+}
+
+/* English LTR mode */
+body.lang-en {
+    font-family: var(--font-en);
+}
+body.lang-en .hdr-logo span,
+body.lang-en h1, body.lang-en h2, body.lang-en h3,
+body.lang-en .ds-btn, body.lang-en .snav-tab,
+body.lang-en .match-card,
+body.lang-en .player-hdr-title,
+body.lang-en .ad-card-text {
+    font-family: var(--font-en);
+    letter-spacing: -0.2px;
+}
 
 /* Search bar */
 .hdr-search-bar {
@@ -948,4 +986,63 @@ button { cursor: pointer; font-family: var(--font); -webkit-tap-highlight-color:
     .tournament-matches {
         grid-template-columns: repeat(4, 1fr);
     }
+}
+
+/* ══════════════════════════════════════════════════
+   FACEBOOK PAGE WIDGET STRIP
+══════════════════════════════════════════════════ */
+.fb-follow-strip {
+    background: linear-gradient(135deg, #1877f2 0%, #0d5fcb 100%);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-radius: var(--radius);
+    margin: 0 16px 16px;
+    box-shadow: 0 4px 16px rgba(24,119,242,0.3);
+}
+.fb-follow-strip .fb-strip-left {
+    display: flex; align-items: center; gap: 10px; flex: 1;
+}
+.fb-follow-strip .fb-strip-icon { font-size: 2rem; color: #fff; }
+.fb-follow-strip .fb-strip-text strong {
+    display: block; color: #fff; font-size: 0.9rem; font-weight: 700;
+}
+.fb-follow-strip .fb-strip-text small { color: rgba(255,255,255,0.8); font-size: 0.75rem; }
+.fb-strip-btn {
+    background: #fff; color: #1877f2; font-weight: 700; font-size: 0.8rem;
+    padding: 8px 16px; border-radius: 6px; border: none; white-space: nowrap;
+    transition: var(--transition); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.fb-strip-btn:hover { background: #e7f0ff; color: #0d5fcb; }
+
+/* ══════════════════════════════════════════════════
+   FLOATING SOCIAL BUTTONS & YOUTUBE STYLING
+══════════════════════════════════════════════════ */
+.floating-btn.yt-btn {
+    background: #ff0000 !important;
+    box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4) !important;
+}
+.floating-btn.yt-btn:hover {
+    background: #cc0000 !important;
+}
+.footer-socials a i.fa-youtube:hover {
+    color: #ff0000 !important;
+}
+
+/* ══════════════════════════════════════════════════
+   TIKTOK FLOATING BUTTON STYLING
+══════════════════════════════════════════════════ */
+.floating-btn.tt-btn {
+    background: #000000 !important;
+    border: 1px solid #ff0050 !important;
+    box-shadow: 0 4px 15px rgba(255, 0, 80, 0.4) !important;
+}
+.floating-btn.tt-btn:hover {
+    background: #111111 !important;
+}
+.footer-socials a i.fa-tiktok:hover {
+    color: #ff0050 !important;
 }
