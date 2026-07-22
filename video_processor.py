@@ -40,13 +40,14 @@ def process_video_for_shorts(input_path: str, output_path: str, title: str = "ي
 
     filter_complex = (
         "[0:v]split=2[bg][fg];"
-        "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=30:5,setpts=PTS/1.03[bg_blurred];"
-        "[fg]scale=1080:-1,setpts=PTS/1.03[fg_scaled];"
+        "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:5,setpts=PTS/1.05[bg_blurred];"
+        # Strong evasion on foreground: flip, color eq, zoom in slightly to hide logos
+        "[fg]hflip,eq=contrast=1.15:brightness=0.02:saturation=1.2,scale=1150:-1,crop=1080:608,setpts=PTS/1.05[fg_scaled];"
         "[bg_blurred][fg_scaled]overlay=0:(H-h)/2[base];"
-        "[base]drawbox=y=0:color=black@0.6:width=iw:height=160:t=fill,"
-        "drawbox=y=ih-160:color=black@0.6:width=iw:height=160:t=fill[v_boxed];"
-        f"[v_boxed]drawtext=fontfile='{FONT_PATH}':text='YALLA SHOOT TODAY':fontsize=42:fontcolor=white:x=(w-text_w)/2:y=50,"
-        f"drawtext=fontfile='{FONT_PATH}':text='yalla-shoot-today.vercel.app':fontsize=32:fontcolor=yellow:x=(w-text_w)/2:y=h-110[v_final]"
+        "[base]drawbox=y=0:color=black@0.7:width=iw:height=180:t=fill,"
+        "drawbox=y=ih-180:color=black@0.7:width=iw:height=180:t=fill[v_boxed];"
+        f"[v_boxed]drawtext=fontfile='{FONT_PATH}':text='YALLA SHOOT TODAY':fontsize=46:fontcolor=white:x=(w-text_w)/2:y=60,"
+        f"drawtext=fontfile='{FONT_PATH}':text='yalla-shoot-today.vercel.app':fontsize=34:fontcolor=yellow:x=(w-text_w)/2:y=h-130[v_final]"
     )
 
     cmd = [
@@ -56,7 +57,8 @@ def process_video_for_shorts(input_path: str, output_path: str, title: str = "ي
         "-filter_complex", filter_complex,
         "-map", "[v_final]",
         "-map", "0:a?",
-        "-af", "atempo=1.03",  # Audio speed modification for pitch shift & hash evasion
+        # Stronger audio evasion: pitch shift + speed up by 5%
+        "-af", "asetrate=44100*1.05,aresample=44100",
         "-t", str(max_duration_sec),
         "-c:v", "libx264",
         "-preset", "fast",
