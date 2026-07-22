@@ -43,13 +43,11 @@ jobs:
           WEBSITE_URL: ${{ secrets.WEBSITE_URL }}
         run: |
           python3 -c "
-          import os, sys, traceback
-          from upload_match_highlights import send_video_to_telegram
-          from youtube_uploader import upload_to_youtube_shorts
+          import os, sys, traceback, requests
           from social_bot import post_fb_video
           
           output_video = '/tmp/test_vid.mp4'
-          title = 'هدف خرافي 🤯 إسبانيا والأرجنتين كأس العالم'
+          title = 'هدف عالمي 🤯 إسبانيا ضد الأرجنتين في كأس العالم'
           desc = f'{title}\n\n#كأس_العالم #اسبانيا #الارجنتين #كرة_القدم'
           
           with open('run_log.txt', 'w') as f:
@@ -57,8 +55,15 @@ jobs:
               
               f.write('\n--- Telegram ---\n')
               try:
-                  send_video_to_telegram(os.getenv('TELEGRAM_BOT_TOKEN'), os.getenv('TELEGRAM_CHANNEL_ID'), output_video, desc)
-                  f.write('✅ Telegram success\n')
+                  bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+                  chat_id = os.getenv('TELEGRAM_CHANNEL_ID')
+                  url = f'https://api.telegram.org/bot{bot_token}/sendVideo'
+                  with open(output_video, 'rb') as video_file:
+                      r = requests.post(url, data={'chat_id': chat_id, 'caption': desc}, files={'video': video_file}, timeout=60)
+                  if r.status_code == 200:
+                      f.write('✅ Telegram success\n')
+                  else:
+                      f.write(f'❌ Telegram failed: {r.status_code} {r.text}\n')
               except Exception as e:
                   f.write(f'❌ Telegram failed: {traceback.format_exc()}\n')
               
@@ -71,7 +76,8 @@ jobs:
               
               f.write('\n--- YouTube ---\n')
               try:
-                  upload_to_youtube_shorts(output_video, title[:90] + ' #shorts', desc, ['كرة_القدم'])
+                  from youtube_uploader import upload_video
+                  upload_video(output_video, title[:90] + ' #shorts', desc, ['كرة_القدم'])
                   f.write('✅ YT success\n')
               except Exception as e:
                   f.write(f'❌ YT failed: {traceback.format_exc()}\n')
