@@ -48,7 +48,19 @@ jobs:
           
           output_video = '/tmp/test_vid.mp4'
           title = 'هدف عالمي 🤯 إسبانيا ضد الأرجنتين في كأس العالم'
-          desc = f'{title}\n\n#كأس_العالم #اسبانيا #الارجنتين #كرة_القدم'
+          desc = (
+              f'{title}\n\n'
+              '🔥 مشاهدة ممتعة للهدف الخرافي!\n\n'
+              '🔴 لمتابعة البث المباشر وباقي الأهداف، زوروا موقعنا:\n'
+              '🌐 https://yalla-shoot-today.vercel.app\n\n'
+              '📱 تابع التغطية لحظة بلحظة على تليجرام:\n'
+              '👉 https://t.me/yalla_shoot_today_Group\n\n'
+              '📺 اشترك في قناتنا على يوتيوب:\n'
+              '👉 https://youtube.com/@YourChannel\n\n'
+              '🎵 تابعنا على تيك توك:\n'
+              '👉 https://tiktok.com/@YourTikTok\n\n'
+              '#كأس_العالم #اسبانيا #الارجنتين #كرة_القدم #يلا_شوت'
+          )
           
           with open('run_log.txt', 'w') as f:
               f.write('STARTING UPLOAD TEST\n')
