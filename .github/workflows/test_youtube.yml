@@ -1,0 +1,41 @@
+name: 🎬 Test YouTube Upload
+on: workflow_dispatch
+jobs:
+  test-yt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 🛠️ Install dependencies
+        run: pip install requests google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
+          
+      - name: 🎥 Download Video
+        run: curl -L "https://h.uguu.se/VTktSdnq.mp4" -o /tmp/spain_arabic_shorts.mp4
+
+      - name: 🚀 Upload to YT
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          python3 -c "
+          import os, sys, traceback
+          from youtube_uploader import upload_to_youtube_shorts
+          
+          output_video = '/tmp/spain_arabic_shorts.mp4'
+          title = 'هدف إسبانيا التاريخي 🤯 (تعليق الشوالي)'
+          desc = f'{title}\n\n#كأس_العالم #اسبانيا #الارجنتين #كرة_القدم'
+          
+          try:
+              upload_to_youtube_shorts(output_video, title[:90] + ' #shorts', desc, ['كرة_القدم', 'عصام_الشوالي', 'يلا_شوت'])
+              print('✅ YT success')
+          except Exception as e:
+              print('❌ YT failed:', traceback.format_exc())
+          "
