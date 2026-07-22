@@ -33,23 +33,42 @@ SPONSOR_URL    = "https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c50
 # State file to avoid duplicate posts
 STATE_FILE = "social_bot_state.json"
 
-# ─── RSS Feeds لأخبار كرة القدم ──────────────────────────────────────────────
+# ─── RSS Feeds لأخبار كرة القدم فقط ─────────────────────────────────────────
 RSS_FEEDS = [
-    {
-        "name": "BBC Arabic Sport",
-        "url": "https://feeds.bbci.co.uk/arabic/sport/rss.xml",
-        "lang": "ar"
-    },
-    {
-        "name": "Sport360 Arabic",
-        "url": "https://arabic.sport360.com/feed/",
-        "lang": "ar"
-    },
     {
         "name": "BBC Sport Football",
         "url": "https://feeds.bbci.co.uk/sport/football/rss.xml",
         "lang": "en"
     },
+    {
+        "name": "Goal.com",
+        "url": "https://www.goal.com/feeds/en/news",
+        "lang": "en"
+    },
+    {
+        "name": "Sky Sports Football",
+        "url": "https://www.skysports.com/rss/12040",
+        "lang": "en"
+    },
+]
+
+# ─── كلمات مفتاحية لفلتر أخبار كرة القدم فقط ────────────────────────────────
+FOOTBALL_KEYWORDS = [
+    "football", "soccer", "match", "goal", "league", "cup", "transfer",
+    "player", "manager", "club", "stadium", "champions", "premier",
+    "fifa", "uefa", "world cup", "la liga", "bundesliga", "serie a",
+    "كرة", "مباراة", "هدف", "دوري", "كأس", "لاعب", "فريق", "مباريات",
+    "تشيلسي", "ليفربول", "ريال", "برشلونة", "مانشستر", "أرسنال",
+    "نادي", "مدرب", "انتقال", "ميلان", "يوفنتوس", "بايرن",
+]
+
+# ─── كلمات محظورة (سياسة، أخبار عامة، إلخ) ──────────────────────────────────
+BLOCKED_KEYWORDS = [
+    "politics", "election", "war", "conflict", "trump", "biden",
+    "parliament", "minister", "president", "government", "military",
+    "سياس", "انتخاب", "حرب", "رئيس", "وزير", "برلمان", "عسكر",
+    "اقتصاد", "بورصة", "أسهم", "جريمة", "حادث", "وفاة",
+    "cricket", "tennis", "rugby", "formula", "boxing", "swimming",
 ]
 
 EMOJIS = {
@@ -588,37 +607,63 @@ def tg_send_message(text: str, btn_text: str = None, btn_url: str = None) -> boo
 
 
 # ─── نظام الأخبار RSS ────────────────────────────────────────────────────────
+def is_football_news(title: str, desc: str = "") -> bool:
+    """Return True only if the news item is football-related and not blocked."""
+    text = (title + " " + desc).lower()
+    # Block non-football/political content first
+    for blocked in BLOCKED_KEYWORDS:
+        if blocked.lower() in text:
+            logger.info(f"⛔ Blocked news (keyword '{blocked}'): {title[:60]}")
+            return False
+    # Must contain at least one football keyword
+    for kw in FOOTBALL_KEYWORDS:
+        if kw.lower() in text:
+            return True
+    logger.info(f"⛔ Not football news (no keywords): {title[:60]}")
+    return False
+
+
 def fetch_rss_news(max_per_feed: int = 3) -> list[dict]:
-    """Fetch latest football news from RSS feeds."""
+    """Fetch latest FOOTBALL-ONLY news from RSS feeds."""
     all_items = []
     for feed in RSS_FEEDS:
         try:
             headers = {"User-Agent": "Mozilla/5.0 Sports-Bot/2.0"}
             r = requests.get(feed["url"], headers=headers, timeout=15)
             if r.status_code != 200:
+                logger.warning(f"RSS feed {feed['name']} returned {r.status_code}")
                 continue
             root = ET.fromstring(r.content)
             channel = root.find("channel")
             if not channel:
                 continue
-            items = channel.findall("item")[:max_per_feed]
+            items = channel.findall("item")
+            added = 0
             for item in items:
+                if added >= max_per_feed:
+                    break
                 title = (item.findtext("title") or "").strip()
                 link  = (item.findtext("link")  or "").strip()
                 pub   = (item.findtext("pubDate") or "").strip()
                 desc  = (item.findtext("description") or "").strip()[:200]
-                if title:
-                    all_items.append({
-                        "title": title,
-                        "link": link,
-                        "pub": pub,
-                        "desc": desc,
-                        "source": feed["name"],
-                        "lang": feed["lang"],
-                        "id": hashlib.md5(title.encode()).hexdigest()[:12],
-                    })
+                if not title:
+                    continue
+                # ⚽ Football-only filter
+                if not is_football_news(title, desc):
+                    continue
+                all_items.append({
+                    "title": title,
+                    "link": link,
+                    "pub": pub,
+                    "desc": desc,
+                    "source": feed["name"],
+                    "lang": feed["lang"],
+                    "id": hashlib.md5(title.encode()).hexdigest()[:12],
+                })
+                added += 1
         except Exception as e:
             logger.warning(f"RSS feed error ({feed['name']}): {e}")
+    logger.info(f"Fetched {len(all_items)} football news items from RSS")
     return all_items
 
 
