@@ -35,20 +35,15 @@ STATE_FILE = "social_bot_state.json"
 
 # ─── RSS Feeds لأخبار كرة القدم فقط ─────────────────────────────────────────
 RSS_FEEDS = [
-    # ── عربي (كرة قدم مباشرة) ────────────────────────────────────────────────
+    # ── عربي (أخبار كرة قدم شغالة 100%) ──────────────────────────────────────
     {
-        "name": "كووورة",
-        "url": "https://www.kooora.com/?rss",
+        "name": "Arriyadiyah (الرياضية)",
+        "url": "https://arriyadiyah.com/rss",
         "lang": "ar"
     },
     {
-        "name": "FilGoal",
-        "url": "https://www.filgoal.com/articles/rss",
-        "lang": "ar"
-    },
-    {
-        "name": "Sport360 Football",
-        "url": "https://arabic.sport360.com/category/%d9%83%d8%b1%d8%a9-%d9%82%d8%af%d9%85/feed/",
+        "name": "Hihi2 (هاي كورة)",
+        "url": "https://hihi2.com/feed",
         "lang": "ar"
     },
     # ── إنجليزي (كرة قدم) ────────────────────────────────────────────────────
