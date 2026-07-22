@@ -1,6 +1,5 @@
 name: 🎬 Simulate Match Highlight
 on: workflow_dispatch
-
 jobs:
   simulate-highlight:
     runs-on: ubuntu-latest
@@ -14,22 +13,16 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: 🛠️ Install system dependencies
+      - name: 🛠️ Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
-          sudo chmod a+rx /usr/local/bin/yt-dlp
-
-      - name: 📚 Install Python packages
-        run: |
           pip install requests Pillow google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client arabic-reshaper python-bidi
           
-      - name: 🎥 Download Original Highlight
-        run: |
-          curl -L "https://h.uguu.se/WkPZpAKo.mp4" -o /tmp/spain_argentina_goal.mp4
+      - name: 🎥 Download Video
+        run: curl -L "https://h.uguu.se/WkPZpAKo.mp4" -o /tmp/spain_argentina_goal.mp4
 
-      - name: 🚀 Process and Upload to all platforms
+      - name: 🚀 Process and Upload
         env:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
@@ -41,7 +34,7 @@ jobs:
           WEBSITE_URL: ${{ secrets.WEBSITE_URL }}
         run: |
           python3 -c "
-          import os, sys
+          import os, sys, traceback
           from video_processor import process_video_for_shorts
           from upload_video_to_telegram import send_video_to_telegram
           from youtube_uploader import upload_to_youtube_shorts
@@ -49,36 +42,37 @@ jobs:
           
           input_video = '/tmp/spain_argentina_goal.mp4'
           output_video = '/tmp/spain_argentina_processed.mp4'
-          title = 'هدف خرافي 🤯 إسبانيا والأرجنتين كأس العالم 2026'
-          desc = f'{title}\n\n#كأس_العالم #اسبانيا #الارجنتين #كرة_القدم #يلا_شوت'
+          title = 'هدف خرافي 🤯 إسبانيا والأرجنتين كأس العالم'
+          desc = f'{title}\n\n#كأس_العالم #اسبانيا #الارجنتين #كرة_القدم'
           
-          print('1. جاري معالجة الفيديو للتهرب من حقوق النشر والتحويل للوضع العمودي...')
-          success = process_video_for_shorts(input_video, output_video, title, max_duration_sec=58)
-          
-          if not success:
-              print('❌ فشل معالجة الفيديو')
-              sys.exit(1)
+          print('1. Processing video...')
+          try:
+              process_video_for_shorts(input_video, output_video, title, max_duration_sec=58)
+          except Exception as e:
+              print('Process Failed:', traceback.format_exc())
               
-          print('\n2. الرفع إلى تليجرام...')
-          send_video_to_telegram(
-              bot_token=os.getenv('TELEGRAM_BOT_TOKEN'),
-              chat_id=os.getenv('TELEGRAM_CHANNEL_ID'),
-              video_path=output_video,
-              caption=desc
-          )
-          print('✅ تم الرفع لتليجرام')
+          print('\n2. Telegram...')
+          try:
+              send_video_to_telegram(os.getenv('TELEGRAM_BOT_TOKEN'), os.getenv('TELEGRAM_CHANNEL_ID'), output_video, desc)
+              print('✅ Telegram success')
+          except Exception as e:
+              print('❌ Telegram failed:', traceback.format_exc())
           
-          print('\n3. الرفع إلى فيسبوك ريلز...')
-          fb_desc = f'{desc}\n\n📺 شاهد المباريات مباشرة: {os.getenv(\"WEBSITE_URL\")}'
-          post_fb_video(fb_desc, output_video)
-          print('✅ تم الرفع لفيسبوك ريلز')
+          print('\n3. Facebook...')
+          try:
+              post_fb_video(desc, output_video)
+              print('✅ FB success')
+          except Exception as e:
+              print('❌ FB failed:', traceback.format_exc())
           
-          print('\n4. الرفع إلى YouTube Shorts...')
-          upload_to_youtube_shorts(
-              video_path=output_video,
-              title=title[:90] + ' #shorts',
-              description=fb_desc,
-              tags=['كرة_القدم', 'ملخص', 'اهداف', 'كأس_العالم', 'اسبانيا', 'الارجنتين']
-          )
-          print('✅ تم الرفع ليوتيوب')
-          "
+          print('\n4. YouTube...')
+          try:
+              upload_to_youtube_shorts(output_video, title[:90] + ' #shorts', desc, ['كرة_القدم'])
+              print('✅ YT success')
+          except Exception as e:
+              print('❌ YT failed:', traceback.format_exc())
+          " > run_log.txt 2>&1
+          cat run_log.txt
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          cat run_log.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
