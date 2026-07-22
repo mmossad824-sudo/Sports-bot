@@ -1031,3 +1031,18 @@ body.lang-en .ad-card-text {
 .footer-socials a i.fa-youtube:hover {
     color: #ff0000 !important;
 }
+
+/* ══════════════════════════════════════════════════
+   TIKTOK FLOATING BUTTON STYLING
+══════════════════════════════════════════════════ */
+.floating-btn.tt-btn {
+    background: #000000 !important;
+    border: 1px solid #ff0050 !important;
+    box-shadow: 0 4px 15px rgba(255, 0, 80, 0.4) !important;
+}
+.floating-btn.tt-btn:hover {
+    background: #111111 !important;
+}
+.footer-socials a i.fa-tiktok:hover {
+    color: #ff0050 !important;
+}
