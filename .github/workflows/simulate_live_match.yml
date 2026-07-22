@@ -27,7 +27,7 @@ jobs:
           
       - name: 🎥 Download Original Highlight
         run: |
-          yt-dlp --no-playlist --format "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --output "/tmp/spain_argentina_goal.mp4" "https://www.youtube.com/watch?v=6HaHNYjnghE"
+          curl -L "https://6b47031916f6599a-197-150-118-96.serveousercontent.com/spain_argentina_goal.mp4" -o /tmp/spain_argentina_goal.mp4
 
       - name: 🚀 Process and Upload to all platforms
         env:
