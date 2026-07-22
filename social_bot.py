@@ -25,6 +25,7 @@ TG_CHANNEL_ID  = os.getenv("TELEGRAM_CHANNEL_ID", "@yalla_shoot_today_Group")
 WEBSITE_URL    = os.getenv("WEBSITE_URL",    "https://yalla-shoot-today.vercel.app")
 HF_API_URL     = os.getenv("HF_API_URL",     "https://mmossad824-sports-bot.hf.space")
 YT_CHANNEL_URL = os.getenv("YT_CHANNEL_URL", "https://youtube.com/@YallaShootTodayOfficial")
+TIKTOK_PROFILE_URL = os.getenv("TIKTOK_PROFILE_URL", "https://tiktok.com/@yallashoottodayofficial")
 FONT_PATH      = "Cairo-Bold.ttf"
 FONT_URL       = "https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hAc5W1Q.ttf"
 SPONSOR_URL    = "https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039"
@@ -509,6 +510,32 @@ def post_fb_text(message: str, link: str = "") -> bool:
         return False
 
 
+def post_fb_video(description: str, video_path: str) -> bool:
+    """Post a short video or Reel to Facebook Page."""
+    if not FB_PAGE_TOKEN or not FB_PAGE_ID:
+        return False
+    try:
+        url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/videos"
+        with open(video_path, "rb") as f:
+            r = requests.post(
+                url,
+                data={"description": description, "access_token": FB_PAGE_TOKEN},
+                files={"source": f},
+                timeout=180
+            )
+        data = r.json()
+        if r.status_code == 200 and data.get("id"):
+            logger.info(f"✅ FB Video Reel posted: id={data.get('id')}")
+            return True
+        else:
+            logger.error(f"FB Video failed: {r.status_code} — {r.text[:300]}")
+            return False
+    except Exception as e:
+        logger.error(f"post_fb_video error: {e}")
+        return False
+
+
+
 # ─── تليجرام ─────────────────────────────────────────────────────────────────
 def tg_send_photo(caption: str, image_path: str,
                   btn_text: str = None, btn_url: str = None) -> bool:
@@ -670,13 +697,16 @@ def task_daily_schedule(state: dict):
 
     # AR footer
     lines_ar.append(f"\n🔴 بث مباشر بجودة HD بدون تقطيع:\n{WEBSITE_URL}")
-    lines_ar.append(f"📱 اشترك في قناة التليجرام للتنبيهات الفورية!")
+    lines_ar.append(f"📱 اشترك في تليجرام للتنبيهات الفورية: {TG_CHANNEL_ID}")
     lines_ar.append(f"▶️ تابع قناتنا على يوتيوب: {YT_CHANNEL_URL}")
-    lines_ar.append(f"\n#يلا_شوت #بث_مباشر #مباريات_اليوم #كورة_مباشرة")
+    lines_ar.append(f"🎵 تابعنا على تيك توك: {TIKTOK_PROFILE_URL}")
+    lines_ar.append(f"🎁 توقع النتيجة واربح جوائز قيمة: {SPONSOR_URL}")
+    lines_ar.append(f"\n#يلا_شوت #بث_مباشر #مباريات_اليوم #كورة_مباشرة #TikTok #Shorts")
 
     # EN footer
     lines_en.append(f"\n🔴 Watch HD Live Streams:\n{WEBSITE_URL}")
-    lines_en.append(f"▶️ Subscribe to YouTube: {YT_CHANNEL_URL}")
+    lines_en.append(f"▶️ Subscribe on YouTube: {YT_CHANNEL_URL}")
+    lines_en.append(f"🎵 Follow on TikTok: {TIKTOK_PROFILE_URL}")
     lines_en.append(f"#Football #LiveStream #Soccer #YallaShoot #LiveFootball")
 
     text_ar = "\n".join(lines_ar)

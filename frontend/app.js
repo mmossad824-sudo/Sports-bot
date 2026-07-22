@@ -527,7 +527,7 @@ async function fetchMatches() {
         if (!response.ok) throw new Error('Failed to fetch matches');
         
         const data = await response.json();
-        allMatches = data.matches || [];
+        allMatches = Array.isArray(data) ? data : (data.matches || []);
         displayMatchesForActiveTab();
         
         // Handle SEO URL: ?match=id
