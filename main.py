@@ -52,10 +52,11 @@ def job_stream_update():
     except Exception as e:
         print(f"Error updating stream links: {e}")
     try:
-        from scraper import update_finished_matches_highlights
+        from scraper import update_finished_matches_highlights, catch_live_goals
         update_finished_matches_highlights()
+        catch_live_goals()
     except Exception as e:
-        print(f"Error updating finished match highlights: {e}")
+        print(f"Error updating finished match highlights or catching live goals: {e}")
     try:
         check_and_send_alerts()
     except Exception as e:

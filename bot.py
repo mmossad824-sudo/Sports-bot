@@ -9,6 +9,8 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "matches.db")
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://your-vercel-domain.vercel.app")
 TELEGRAM_API_URL = os.getenv("TELEGRAM_API_URL", "https://api.telegram.org").rstrip('/')
 SPONSOR_URL = "https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039"
+FB_PAGE_TOKEN = os.getenv("FB_PAGE_TOKEN", "")
+FB_PAGE_ID = os.getenv("FB_PAGE_ID", "1183659124839160")
 
 # ─── FILTERS ──────────────────────────────────────────────────────────────────
 # Only football. Only these leagues.
@@ -188,6 +190,27 @@ def send_telegram_poll(question, options):
         "is_anonymous": False,
     })
 
+def post_fb_start_alert(team_a, team_b, tournament, time_str):
+    if not FB_PAGE_TOKEN or not FB_PAGE_ID:
+        return
+    fb_text = (
+        f"🔥 بدأت الآن القمة المنتظرة! 🔥\n\n"
+        f"🏆 {tournament}\n"
+        f"⚔️ {team_a} 🆚 {team_b}\n"
+        f"⏰ {time_str}\n\n"
+        f"🤔 من سيفوز في مباراة اليوم؟ شاركونا توقعاتكم في التعليقات 👇\n\n"
+        f"📺 لمشاهدة المباراة بدون تقطيع، زوروا موقعنا:\n"
+        f"{WEBSITE_URL}\n\n"
+        f"📱 تابعونا على تليجرام لتغطية حية للأهداف:\n"
+        f"https://t.me/yalla_shoot_today_Group\n\n"
+        f"#يلا_شوت #{team_a.replace(' ', '_')} #{team_b.replace(' ', '_')} #مباشر #كرة_القدم"
+    )
+    url = f"https://graph.facebook.com/v18.0/{FB_PAGE_ID}/feed"
+    payload = {"message": fb_text, "access_token": FB_PAGE_TOKEN, "link": WEBSITE_URL}
+    try:
+        requests.post(url, data=payload, timeout=10)
+    except Exception as e:
+        print(f"[Facebook] Error posting start alert: {e}")
 
 # ─── DELETE OLD MESSAGES ───────────────────────────────────────────────────────
 def delete_expired_match_messages():
@@ -394,6 +417,9 @@ def check_and_send_alerts():
                     )
                 except Exception:
                     pass
+                
+                # Post to Facebook
+                post_fb_start_alert(team_a, team_b, tournament, time_str)
 
         # ── 2. GOAL ALERT ──────────────────────────────────────────────────
         is_live = (status == 'جارية الآن' or 'الشوط' in status)
@@ -492,17 +518,48 @@ def _update_match(match_id, **fields):
 
 
 def _get_scorer_name(match_id: str, home_scored: bool) -> str:
-    """Try to fetch scorer name from DB if stored; returns empty string if not available."""
+    """Scrape Yallakora match center link to find the latest goal scorer name."""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        # Try a scorers column if it exists
-        cursor.execute("SELECT stream_url FROM matches WHERE id = ?", (match_id,))
+        cursor.execute("SELECT link FROM matches WHERE id = ?", (match_id,))
         row = cursor.fetchone()
         conn.close()
-        # scorer data not stored separately — return empty for now
-    except Exception:
-        pass
+        
+        if not row or not row[0]:
+            return ""
+            
+        match_link = row[0]
+        if not match_link.startswith("http"):
+            match_link = f"https://www.yallakora.com{match_link}"
+            
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        import urllib.request
+        from bs4 import BeautifulSoup
+        req = urllib.request.Request(match_link, headers=headers)
+        html = urllib.request.urlopen(req, timeout=10).read()
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Yallakora goal events are usually in event lists
+        # We try to find the latest goal event.
+        events = soup.find_all('div', class_='eventItem')
+        scorers = []
+        for event in events:
+            # check if it has goal icon
+            icon = event.find('i', class_='icon-goal')
+            if icon:
+                player_tag = event.find('div', class_='playerName') or event.find('p')
+                if player_tag:
+                    scorers.append(player_tag.text.strip())
+                    
+        if scorers:
+            # Assuming events might be ordered ascending or descending. We take the last found or first.
+            # Yallakora timeline is usually top-down (latest at top). Let's take the first one.
+            return scorers[0]
+            
+    except Exception as e:
+        print(f"[Scraper] Error getting scorer name: {e}")
+        
     return ""
 
 

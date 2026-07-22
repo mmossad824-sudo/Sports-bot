@@ -33,23 +33,49 @@ SPONSOR_URL    = "https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c50
 # State file to avoid duplicate posts
 STATE_FILE = "social_bot_state.json"
 
-# ─── RSS Feeds لأخبار كرة القدم ──────────────────────────────────────────────
+# ─── RSS Feeds لأخبار كرة القدم فقط ─────────────────────────────────────────
 RSS_FEEDS = [
+    # ── عربي (أخبار كرة قدم شغالة 100%) ──────────────────────────────────────
     {
-        "name": "BBC Arabic Sport",
-        "url": "https://feeds.bbci.co.uk/arabic/sport/rss.xml",
+        "name": "Arriyadiyah (الرياضية)",
+        "url": "https://arriyadiyah.com/rss",
         "lang": "ar"
     },
     {
-        "name": "Sport360 Arabic",
-        "url": "https://arabic.sport360.com/feed/",
+        "name": "Hihi2 (هاي كورة)",
+        "url": "https://hihi2.com/feed",
         "lang": "ar"
     },
+    # ── إنجليزي (كرة قدم) ────────────────────────────────────────────────────
     {
         "name": "BBC Sport Football",
         "url": "https://feeds.bbci.co.uk/sport/football/rss.xml",
         "lang": "en"
     },
+    {
+        "name": "Sky Sports Football",
+        "url": "https://www.skysports.com/rss/12040",
+        "lang": "en"
+    },
+]
+
+# ─── كلمات مفتاحية لفلتر أخبار كرة القدم فقط ────────────────────────────────
+FOOTBALL_KEYWORDS = [
+    "football", "soccer", "match", "goal", "league", "cup", "transfer",
+    "player", "manager", "club", "stadium", "champions", "premier",
+    "fifa", "uefa", "world cup", "la liga", "bundesliga", "serie a",
+    "كرة", "مباراة", "هدف", "دوري", "كأس", "لاعب", "فريق", "مباريات",
+    "تشيلسي", "ليفربول", "ريال", "برشلونة", "مانشستر", "أرسنال",
+    "نادي", "مدرب", "انتقال", "ميلان", "يوفنتوس", "بايرن",
+]
+
+# ─── كلمات محظورة (سياسة، أخبار عامة، إلخ) ──────────────────────────────────
+BLOCKED_KEYWORDS = [
+    "politics", "election", "war", "conflict", "trump", "biden",
+    "parliament", "minister", "president", "government", "military",
+    "سياس", "انتخاب", "حرب", "رئيس", "وزير", "برلمان", "عسكر",
+    "اقتصاد", "بورصة", "أسهم", "جريمة", "حادث", "وفاة",
+    "cricket", "tennis", "rugby", "formula", "boxing", "swimming",
 ]
 
 EMOJIS = {
@@ -468,7 +494,7 @@ def post_fb_photo(message: str, image_path: str) -> bool:
         logger.warning("Facebook credentials missing — set FB_PAGE_TOKEN env var.")
         return False
     try:
-        url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/photos"
+        url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/photos"
         with open(image_path, "rb") as f:
             r = requests.post(
                 url,
@@ -493,7 +519,7 @@ def post_fb_text(message: str, link: str = "") -> bool:
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         return False
     try:
-        url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/feed"
+        url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/feed"
         payload = {"message": message, "access_token": FB_PAGE_TOKEN}
         if link:
             payload["link"] = link
@@ -515,7 +541,7 @@ def post_fb_video(description: str, video_path: str) -> bool:
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         return False
     try:
-        url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/videos"
+        url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/videos"
         with open(video_path, "rb") as f:
             r = requests.post(
                 url,
@@ -588,74 +614,104 @@ def tg_send_message(text: str, btn_text: str = None, btn_url: str = None) -> boo
 
 
 # ─── نظام الأخبار RSS ────────────────────────────────────────────────────────
+def is_football_news(title: str, desc: str = "") -> bool:
+    """Return True only if the news item is football-related and not blocked."""
+    text = (title + " " + desc).lower()
+    # Block non-football/political content first
+    for blocked in BLOCKED_KEYWORDS:
+        if blocked.lower() in text:
+            logger.info(f"⛔ Blocked news (keyword '{blocked}'): {title[:60]}")
+            return False
+    # Must contain at least one football keyword
+    for kw in FOOTBALL_KEYWORDS:
+        if kw.lower() in text:
+            return True
+    logger.info(f"⛔ Not football news (no keywords): {title[:60]}")
+    return False
+
+
 def fetch_rss_news(max_per_feed: int = 3) -> list[dict]:
-    """Fetch latest football news from RSS feeds."""
+    """Fetch latest FOOTBALL-ONLY news from RSS feeds."""
     all_items = []
     for feed in RSS_FEEDS:
         try:
             headers = {"User-Agent": "Mozilla/5.0 Sports-Bot/2.0"}
             r = requests.get(feed["url"], headers=headers, timeout=15)
             if r.status_code != 200:
+                logger.warning(f"RSS feed {feed['name']} returned {r.status_code}")
                 continue
             root = ET.fromstring(r.content)
             channel = root.find("channel")
             if not channel:
                 continue
-            items = channel.findall("item")[:max_per_feed]
+            items = channel.findall("item")
+            added = 0
             for item in items:
+                if added >= max_per_feed:
+                    break
                 title = (item.findtext("title") or "").strip()
                 link  = (item.findtext("link")  or "").strip()
                 pub   = (item.findtext("pubDate") or "").strip()
                 desc  = (item.findtext("description") or "").strip()[:200]
-                if title:
-                    all_items.append({
-                        "title": title,
-                        "link": link,
-                        "pub": pub,
-                        "desc": desc,
-                        "source": feed["name"],
-                        "lang": feed["lang"],
-                        "id": hashlib.md5(title.encode()).hexdigest()[:12],
-                    })
+                if not title:
+                    continue
+                # ⚽ Football-only filter
+                if not is_football_news(title, desc):
+                    continue
+                all_items.append({
+                    "title": title,
+                    "link": link,
+                    "pub": pub,
+                    "desc": desc,
+                    "source": feed["name"],
+                    "lang": feed["lang"],
+                    "id": hashlib.md5(title.encode()).hexdigest()[:12],
+                })
+                added += 1
         except Exception as e:
             logger.warning(f"RSS feed error ({feed['name']}): {e}")
+    logger.info(f"Fetched {len(all_items)} football news items from RSS")
     return all_items
 
 
 def format_news_post(item: dict) -> tuple[str, str]:
     """Returns (fb_text, tg_text) for a news item."""
-    title = item["title"]
+    title  = item["title"]
     source = item["source"]
-    link = item["link"]
-    lang = item.get("lang", "ar")
+    link   = item["link"]
+    lang   = item.get("lang", "ar")
 
     if lang == "ar":
         fb_text = (
-            f"📰 {title}\n\n"
+            f"⚽ {title}\n\n"
+            f"📌 المصدر: {source}\n"
             f"🔗 {link}\n\n"
-            f"⚽ تابع أحدث أخبار كرة القدم وشاهد المباريات مباشرة:\n"
-            f"{WEBSITE_URL}\n\n"
-            f"#كرة_القدم #أخبار_كورة #يلا_شوت"
+            f"📺 شاهد المباريات مباشرة بجودة HD:\n{WEBSITE_URL}\n\n"
+            f"▶️ يوتيوب: {YT_CHANNEL_URL}\n"
+            f"🎵 تيك توك: {TIKTOK_PROFILE_URL}\n\n"
+            f"#كرة_القدم #أخبار_كورة #يلا_شوت #بث_مباشر"
         )
         tg_text = (
-            f"📰 <b>{title}</b>\n\n"
-            f"📌 المصدر: {source}\n"
+            f"⚽ <b>{title}</b>\n\n"
+            f"📌 المصدر: <b>{source}</b>\n"
             f"🔗 <a href='{link}'>اقرأ المزيد</a>\n\n"
-            f"⚽ شاهد المباريات مباشرة:\n{WEBSITE_URL}"
+            f"📺 <a href='{WEBSITE_URL}'>شاهد المباريات مباشرة</a>"
         )
     else:
         fb_text = (
-            f"📰 {title}\n\n"
+            f"⚽ {title}\n\n"
+            f"📌 Source: {source}\n"
             f"🔗 {link}\n\n"
-            f"⚽ Watch live football matches at:\n"
-            f"{WEBSITE_URL}\n\n"
-            f"#Football #Soccer #LiveStream #YallaShoot"
+            f"📺 Watch Live HD Football:\n{WEBSITE_URL}\n\n"
+            f"▶️ YouTube: {YT_CHANNEL_URL}\n"
+            f"🎵 TikTok: {TIKTOK_PROFILE_URL}\n\n"
+            f"#Football #Soccer #LiveStream #YallaShoot #PremierLeague"
         )
         tg_text = (
-            f"📰 <b>{title}</b>\n\n"
-            f"📌 Source: {source}\n"
+            f"⚽ <b>{title}</b>\n\n"
+            f"📌 Source: <b>{source}</b>\n"
             f"🔗 <a href='{link}'>Read more</a>\n\n"
-            f"⚽ Watch live: {WEBSITE_URL}"
+            f"📺 <a href='{WEBSITE_URL}'>Watch Live Football</a>"
         )
     return fb_text, tg_text
 
