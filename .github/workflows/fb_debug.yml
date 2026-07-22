@@ -1,0 +1,21 @@
+name: 🐛 Debug Facebook Token
+on: workflow_dispatch
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test FB Token
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+        run: |
+          echo "Testing Facebook API..."
+          curl -s -X POST "https://graph.facebook.com/v21.0/${FB_PAGE_ID}/feed" \
+               -d "message=Test Post" \
+               -d "access_token=${FB_PAGE_TOKEN}" > result.json
+          echo "Facebook API Response:"
+          cat result.json
+          # Write to step summary
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat result.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
