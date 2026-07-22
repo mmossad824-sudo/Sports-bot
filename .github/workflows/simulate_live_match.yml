@@ -3,6 +3,8 @@ on: workflow_dispatch
 jobs:
   simulate-highlight:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
@@ -19,8 +21,8 @@ jobs:
           sudo apt-get install -y ffmpeg
           pip install requests Pillow google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client arabic-reshaper python-bidi
           
-      - name: 🎥 Download Video
-        run: curl -L "https://h.uguu.se/WkPZpAKo.mp4" -o /tmp/spain_argentina_goal.mp4
+      - name: 🎥 Generate Test Video
+        run: ffmpeg -f lavfi -i color=c=blue:s=1080x1920:d=10 -c:v libx264 -t 10 /tmp/test_vid.mp4
 
       - name: 🚀 Process and Upload
         env:
@@ -35,45 +37,43 @@ jobs:
         run: |
           python3 -c "
           import os, sys, traceback
-          from video_processor import process_video_for_shorts
           from upload_video_to_telegram import send_video_to_telegram
           from youtube_uploader import upload_to_youtube_shorts
           from social_bot import post_fb_video
           
-          input_video = '/tmp/spain_argentina_goal.mp4'
-          output_video = '/tmp/spain_argentina_processed.mp4'
+          output_video = '/tmp/test_vid.mp4'
           title = 'هدف خرافي 🤯 إسبانيا والأرجنتين كأس العالم'
           desc = f'{title}\n\n#كأس_العالم #اسبانيا #الارجنتين #كرة_القدم'
           
-          print('1. Processing video...')
-          try:
-              process_video_for_shorts(input_video, output_video, title, max_duration_sec=58)
-          except Exception as e:
-              print('Process Failed:', traceback.format_exc())
+          with open('run_log.txt', 'w') as f:
+              f.write('STARTING UPLOAD TEST\n')
               
-          print('\n2. Telegram...')
-          try:
-              send_video_to_telegram(os.getenv('TELEGRAM_BOT_TOKEN'), os.getenv('TELEGRAM_CHANNEL_ID'), output_video, desc)
-              print('✅ Telegram success')
-          except Exception as e:
-              print('❌ Telegram failed:', traceback.format_exc())
-          
-          print('\n3. Facebook...')
-          try:
-              post_fb_video(desc, output_video)
-              print('✅ FB success')
-          except Exception as e:
-              print('❌ FB failed:', traceback.format_exc())
-          
-          print('\n4. YouTube...')
-          try:
-              upload_to_youtube_shorts(output_video, title[:90] + ' #shorts', desc, ['كرة_القدم'])
-              print('✅ YT success')
-          except Exception as e:
-              print('❌ YT failed:', traceback.format_exc())
-          " > run_log.txt 2>&1
+              f.write('\n--- Telegram ---\n')
+              try:
+                  send_video_to_telegram(os.getenv('TELEGRAM_BOT_TOKEN'), os.getenv('TELEGRAM_CHANNEL_ID'), output_video, desc)
+                  f.write('✅ Telegram success\n')
+              except Exception as e:
+                  f.write(f'❌ Telegram failed: {traceback.format_exc()}\n')
+              
+              f.write('\n--- Facebook ---\n')
+              try:
+                  post_fb_video(desc, output_video)
+                  f.write('✅ FB success\n')
+              except Exception as e:
+                  f.write(f'❌ FB failed: {traceback.format_exc()}\n')
+              
+              f.write('\n--- YouTube ---\n')
+              try:
+                  upload_to_youtube_shorts(output_video, title[:90] + ' #shorts', desc, ['كرة_القدم'])
+                  f.write('✅ YT success\n')
+              except Exception as e:
+                  f.write(f'❌ YT failed: {traceback.format_exc()}\n')
+          "
           cat run_log.txt
-          echo '```text' >> $GITHUB_STEP_SUMMARY
-          cat run_log.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          curl -X POST -H "Content-Type: text/plain" -d @run_log.txt https://cd1c115dd95d4284-197-150-118-96.serveousercontent.com
+          
+      - name: 📝 Create Issue on Failure
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create --title "Test Video Upload Log" --body-file run_log.txt --repo mmossad824-sudo/Sports-bot || echo "Failed to create issue"
