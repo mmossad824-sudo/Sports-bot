@@ -37,7 +37,7 @@ jobs:
         run: |
           python3 -c "
           import os, sys, traceback
-          from upload_video_to_telegram import send_video_to_telegram
+          from upload_match_highlights import send_video_to_telegram
           from youtube_uploader import upload_to_youtube_shorts
           from social_bot import post_fb_video
           
