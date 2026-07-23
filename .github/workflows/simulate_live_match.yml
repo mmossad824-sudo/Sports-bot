@@ -19,7 +19,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          pip install requests Pillow google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client arabic-reshaper python-bidi
+          pip install requests Pillow google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client arabic-reshaper python-bidi python-dotenv yt-dlp
           
       - name: 🎥 Generate Test Video
         run: |

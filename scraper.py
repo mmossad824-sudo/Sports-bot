@@ -132,14 +132,16 @@ def cleanup_old_data():
                     m_date = datetime.strptime(m_date_str, "%m/%d/%Y")
                     # If match is older than 2 days
                     if (now - m_date).days > 2:
-                        cursor.execute("DELETE FROM matches WHERE id = ?", (m_id,))
-                        cursor.execute("DELETE FROM match_highlights WHERE match_id = ?", (m_id,))
+                        cursor.execute("DELETE FROM matches WHERE id = ?".replace("'", ""), (m_id,))
+                        cursor.execute("DELETE FROM match_highlights WHERE match_id = ?".replace("'", ""), (m_id,))
                 except Exception as e:
-                    logger.error(f"Error parsing date for cleanup: {e}")
+                    print(f"Error parsing date for cleanup: {e}")
         conn.commit()
-        logger.info("✅ Old matches and highlights cleaned up successfully.")
+        # Vacuum to reclaim space
+        conn.execute("VACUUM")
+        print("✅ Old matches and highlights cleaned up and database vacuumed successfully.")
     except Exception as e:
-        logger.error(f"Failed to clean up old data: {e}")
+        print(f"Failed to clean up old data: {e}")
     finally:
         conn.close()
 
@@ -619,20 +621,7 @@ def update_finished_matches_highlights():
                     """, (sources_json, datetime.now().isoformat(), match_id))
                     print(f"[Highlights] Successfully updated highlights for {team_a} VS {team_b}")
                     
-                    # Spawn a background process to download and upload the video to Telegram
-                    import subprocess
-                    import sys
-                    script_path = os.path.join(os.path.dirname(__file__), "upload_video_to_telegram.py")
-                    # We pass the Dailymotion URL or YouTube URL (Dailymotion is better for yt-dlp downloading as it's not blocked as often)
-                    source_url = None
-                    if "dailymotion" in embed_url:
-                        source_url = f"https://www.dailymotion.com/video/{data.get('video_id')}"
-                    elif "youtube" in embed_url:
-                        source_url = f"https://www.youtube.com/watch?v={data.get('video_id')}"
-                        
-                    if source_url:
-                        print(f"[Highlights] Spawning background Telegram upload task for {team_a} VS {team_b}...")
-                        subprocess.Popen([sys.executable, script_path, match_id, team_a, team_b, source_url])
+                    # Removed Telegram video upload as per user request
                     
                 else:
                     print(f"[Highlights] Proxy returned empty embed URL for {team_a} VS {team_b}")
