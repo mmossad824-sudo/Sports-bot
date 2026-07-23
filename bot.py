@@ -420,6 +420,14 @@ def check_and_send_alerts():
                 
                 # Post to Facebook
                 post_fb_start_alert(team_a, team_b, tournament, time_str)
+                
+                # Start Live Streamer Scoreboard
+                try:
+                    import subprocess
+                    script_path = os.path.join(os.path.dirname(__file__), "live_streamer.py")
+                    subprocess.Popen(["python3", script_path, "start", str(match_id), team_a, team_b])
+                except Exception as e:
+                    print(f"Error starting live stream: {e}")
 
         # ── 2. GOAL ALERT ──────────────────────────────────────────────────
         is_live = (status == 'جارية الآن' or 'الشوط' in status)
@@ -462,6 +470,13 @@ def check_and_send_alerts():
         # Update score for next comparison
         if is_live:
             _update_match(match_id, last_telegram_scoreA=score_a, last_telegram_scoreB=score_b)
+            # Update local score file for FFmpeg to read
+            score_file = os.path.join(os.path.dirname(__file__), f"live_score_{match_id}.txt")
+            try:
+                with open(score_file, "w", encoding="utf-8") as f:
+                    f.write(f"{team_a} {score_a} - {score_b} {team_b}")
+            except Exception:
+                pass
 
         # ── 3. HALFTIME ALERT ──────────────────────────────────────────────
         is_half = ('بين الشوطين' in status)
@@ -502,6 +517,14 @@ def check_and_send_alerts():
             if msg_id:
                 log_telegram_msg(match_id, "end", msg_id)
                 _update_match(match_id, telegram_end_sent=1)
+                
+                # Stop Live Streamer Scoreboard
+                try:
+                    import subprocess
+                    script_path = os.path.join(os.path.dirname(__file__), "live_streamer.py")
+                    subprocess.Popen(["python3", script_path, "stop", str(match_id)])
+                except Exception as e:
+                    print(f"Error stopping live stream: {e}")
 
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
