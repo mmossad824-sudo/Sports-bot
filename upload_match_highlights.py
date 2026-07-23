@@ -70,7 +70,6 @@ def upload_video(match_id, team_a, team_b, video_url):
             fb_url = f"https://www.facebook.com/watch/?v={fb_vid_id}"
             cursor.execute("INSERT INTO match_highlights (match_id, platform, video_url) VALUES (?, ?, ?)", (match_id, "facebook", fb_url))
             conn.commit()
-            post_fb_comment(fb_vid_id, comment_text)
     except Exception as e:
         print(f"Error uploading to Facebook: {e}")
 
