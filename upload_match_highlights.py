@@ -5,7 +5,10 @@ import requests
 import sqlite3
 import json
 from video_processor import process_video_for_shorts
-from social_bot import post_fb_video, post_fb_comment
+from social_bot import (
+    post_fb_video, post_fb_comment,
+    TELEGRAM_GROUP_URL, YT_CHANNEL_URL, TIKTOK_PROFILE_URL
+)
 from youtube_uploader import upload_video as yt_upload, post_youtube_comment
 
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://yalla-shoot-today.vercel.app")
@@ -35,13 +38,24 @@ def upload_video(match_id, team_a, team_b, video_url):
     video_to_upload_fb = temp_fb_shorts if fb_success else temp_file
 
     desc = (
-        f"🎬 ملخص وأهداف مباراة {team_a} ضد {team_b} 🤯\n\n"
-        f"🔴 شاهد المزيد وتابع البث المباشر:\n{WEBSITE_URL}\n"
-        f"🎁 توقع واربح:\n{SPONSOR_URL}\n\n"
-        f"#{team_a.replace(' ', '_')} #{team_b.replace(' ', '_')} #يلا_شوت #مباريات_اليوم #كرة_القدم"
+        f"🚨🔥 شاهد الآن: ملخص وأهداف المباراة النارية بين {team_a} و {team_b} 🤯⚽\n"
+        f"لا تفوت فرصة مشاهدة كل اللقطات الحاسمة والأهداف الخرافية من هذه المواجهة الكروية المثيرة!\n\n"
+        f"🔴 🖥️ لمشاهدة ملخصات أخرى ومتابعة البث المباشر بأعلى جودة وبدون تقطيع ادخل لموقعنا:\n"
+        f"👉 {WEBSITE_URL} 👈\n\n"
+        f"📱 تابعنا على منصاتنا لتغطية حصرية 24/7:\n"
+        f"💬 تليجرام: {TELEGRAM_GROUP_URL}\n"
+        f"▶️ يوتيوب: {YT_CHANNEL_URL}\n"
+        f"🎵 تيك توك: {TIKTOK_PROFILE_URL}\n\n"
+        f"🎁 العب وتوقع واربح جوائز قيمة:\n"
+        f"{SPONSOR_URL}\n\n"
+        f"#{team_a.replace(' ', '_')} #{team_b.replace(' ', '_')} #يلا_شوت #مباريات_اليوم #كرة_القدم #أهداف_مجنونة #ملخص_مباراة"
     )
 
-    comment_text = f"لمشاهدة المقطع بجودة عالية وصورة واضحة أدخل للموقع:\n{WEBSITE_URL}"
+    comment_text = (
+        f"📌 لمشاهدة المقطع بجودة عالية وصورة واضحة كاملة، بالإضافة للبث المباشر لكل المباريات بدون تقطيع، "
+        f"تفضل بزيارة موقعنا الآن:\n🔗 {WEBSITE_URL}\n"
+        f"ولا تنسَ الاشتراك في تليجرام ليصلك كل جديد: {TELEGRAM_GROUP_URL}"
+    )
     
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
