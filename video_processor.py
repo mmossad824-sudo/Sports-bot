@@ -40,14 +40,14 @@ def process_video_for_shorts(input_path: str, output_path: str, title: str = "ي
 
     filter_complex = (
         "[0:v]split=2[bg][fg];"
-        "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:5,setpts=PTS/1.05[bg_blurred];"
-        # Strong evasion on foreground: flip, color eq, zoom in slightly to hide logos
-        "[fg]hflip,eq=contrast=1.15:brightness=0.02:saturation=1.2,scale=1150:-1,crop=1080:608,setpts=PTS/1.05[fg_scaled];"
-        "[bg_blurred][fg_scaled]overlay=0:(H-h)/2[base];"
-        "[base]drawbox=y=0:color=black@0.7:width=iw:height=180:t=fill,"
-        "drawbox=y=ih-180:color=black@0.7:width=iw:height=180:t=fill[v_boxed];"
-        f"[v_boxed]drawtext=fontfile='{FONT_PATH}':text='YALLA SHOOT TODAY':fontsize=46:fontcolor=white:x=(w-text_w)/2:y=60,"
-        f"drawtext=fontfile='{FONT_PATH}':text='yalla-shoot-today.vercel.app':fontsize=34:fontcolor=yellow:x=(w-text_w)/2:y=h-130[v_final]"
+        "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=50:5,eq=brightness=-0.1,setpts=PTS/1.09[bg_blurred];"
+        # Nuclear evasion: flip, extreme color, add moving noise (static), shrink frame significantly
+        "[fg]hflip,eq=contrast=1.3:brightness=0.04:saturation=1.5,noise=alls=10:allf=t+u,scale=950:-2,setpts=PTS/1.09[fg_scaled];"
+        "[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2[base];"
+        "[base]drawbox=y=0:color=black@0.9:width=iw:height=220:t=fill,"
+        "drawbox=y=ih-220:color=black@0.9:width=iw:height=220:t=fill[v_boxed];"
+        f"[v_boxed]drawtext=fontfile='{FONT_PATH}':text='YALLA SHOOT TODAY':fontsize=50:fontcolor=white:x=(w-text_w)/2:y=80,"
+        f"drawtext=fontfile='{FONT_PATH}':text='yalla-shoot-today.vercel.app':fontsize=38:fontcolor=yellow:x=(w-text_w)/2:y=h-150[v_final]"
     )
 
     cmd = [
@@ -57,8 +57,8 @@ def process_video_for_shorts(input_path: str, output_path: str, title: str = "ي
         "-filter_complex", filter_complex,
         "-map", "[v_final]",
         "-map", "0:a?",
-        # Stronger audio evasion: pitch shift + speed up by 5%
-        "-af", "asetrate=44100*1.05,aresample=44100",
+        # Extreme audio evasion: pitch shift +12% and tempo adjustment for net speed ~1.06x
+        "-af", "asetrate=44100*1.12,atempo=0.95,volume=1.5",
         "-t", str(max_duration_sec),
         "-c:v", "libx264",
         "-preset", "fast",
@@ -87,8 +87,8 @@ def _process_video_fallback(input_path: str, output_path: str, max_duration_sec:
     logger.info("Executing fallback FFmpeg transformation...")
     filter_complex = (
         "[0:v]split=2[bg][fg];"
-        "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=20:5,setpts=PTS/1.03[bg_blurred];"
-        "[fg]scale=1080:-1,setpts=PTS/1.03[fg_scaled];"
+        "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:5,setpts=PTS/1.05[bg_blurred];"
+        "[fg]hflip,eq=contrast=1.15:brightness=0.02:saturation=1.2,scale=1150:-1,crop=1080:608,setpts=PTS/1.05[fg_scaled];"
         "[bg_blurred][fg_scaled]overlay=0:(H-h)/2[v_final]"
     )
     cmd = [

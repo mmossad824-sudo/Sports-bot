@@ -546,14 +546,64 @@ def post_fb_text(message: str, link: str = "") -> bool:
         return False
 
 
+def post_fb_story(video_path: str) -> bool:
+    """Post a video to Facebook Page Stories."""
+    if not FB_PAGE_TOKEN or not FB_PAGE_ID:
+        return False
+    try:
+        file_size = os.path.getsize(video_path)
+        start_url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/video_stories"
+        res_start = requests.post(start_url, data={
+            "access_token": FB_PAGE_TOKEN,
+            "upload_phase": "start",
+            "file_size": file_size
+        }, timeout=30).json()
+        
+        if "video_id" not in res_start:
+            logger.error(f"Story start failed: {res_start}")
+            return False
+            
+        video_id = res_start["video_id"]
+        upload_url = res_start["upload_url"]
+        
+        with open(video_path, "rb") as f:
+            res_transfer = requests.post(
+                upload_url,
+                headers={"Authorization": f"OAuth {FB_PAGE_TOKEN}", "offset": "0", "file_size": str(file_size)},
+                files={"video_file_chunk": f},
+                timeout=180
+            ).json()
+            
+        res_finish = requests.post(start_url, data={
+            "access_token": FB_PAGE_TOKEN,
+            "upload_phase": "finish",
+            "video_id": video_id
+        }, timeout=30).json()
+        
+        if res_finish.get("success"):
+            logger.info(f"✅ FB Story posted: id={video_id}")
+            return True
+        else:
+            logger.error(f"Story finish failed: {res_finish}")
+            return False
+    except Exception as e:
+        logger.error(f"post_fb_story error: {e}")
+        return False
+
 def post_fb_video(description: str, video_path: str) -> bool:
-    """Post a short video or Reel to Facebook Page."""
+    """Post a short video or Reel to Facebook Page, and also to Stories."""
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         return False
         
     tg_link = "\n\n📱 اشترك في تليجرام لمتابعة كل جديد:\nhttps://t.me/yalla_shoot_today_Group"
     if "t.me" not in description:
         description += tg_link
+
+    # Also post to stories in the background
+    try:
+        post_fb_story(video_path)
+    except Exception as e:
+        logger.error(f"Failed to post story alongside video: {e}")
 
     try:
         url = f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/videos"
@@ -562,7 +612,7 @@ def post_fb_video(description: str, video_path: str) -> bool:
                 url,
                 data={"description": description, "access_token": FB_PAGE_TOKEN},
                 files={"source": f},
-                timeout=180
+                timeout=600
             )
         data = r.json()
         if r.status_code == 200 and data.get("id"):
@@ -574,8 +624,6 @@ def post_fb_video(description: str, video_path: str) -> bool:
     except Exception as e:
         logger.error(f"post_fb_video error: {e}")
         return False
-
-
 
 # ─── تليجرام ─────────────────────────────────────────────────────────────────
 def tg_send_photo(caption: str, image_path: str,
