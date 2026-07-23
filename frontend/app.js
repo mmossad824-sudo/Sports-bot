@@ -841,11 +841,30 @@ async function _loadMatchStream(matchId) {
         }
         
         // Handle finished matches (Highlights)
-        if (match.status === 'انتهت') {
-            const highlights = sources.filter(s => s.url.includes('youtube.com') || s.url.includes('youtu.be') || s.url.endsWith('.mp4'));
+        if (match.status === 'انتهت' || match.status === 'تم الانتهاء') {
+            let highlights = sources.filter(s => s.url.includes('youtube.com') || s.url.includes('youtu.be') || s.url.endsWith('.mp4'));
+            
+            if (match.highlights && match.highlights.length > 0) {
+                const dbHighlights = match.highlights.map(hl => {
+                    let embedUrl = hl.video_url;
+                    if (hl.platform === 'youtube' && embedUrl.includes('youtu.be/')) {
+                        const vidId = embedUrl.split('youtu.be/')[1];
+                        embedUrl = `https://www.youtube.com/embed/${vidId}`;
+                    } else if (hl.platform === 'facebook' && embedUrl.includes('facebook.com/watch/?v=')) {
+                        embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(embedUrl)}&show_text=false&width=auto`;
+                    }
+                    return {
+                        name: `هدف/ملخص (${hl.platform})`,
+                        type: "iframe",
+                        url: embedUrl
+                    };
+                });
+                highlights = dbHighlights.concat(highlights);
+            }
+
             if (highlights.length > 0) {
                 placeholder.classList.add('hidden');
-                document.getElementById('player-title').innerText = `ملخص المباراة: ${match.teamA} VS ${match.teamB}`;
+                document.getElementById('player-title').innerText = `ملخص وأهداف المباراة: ${match.teamA} VS ${match.teamB}`;
                 currentSources = highlights;
                 
                 // Show interactive overlay ad over the video

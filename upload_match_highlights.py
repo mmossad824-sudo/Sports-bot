@@ -5,8 +5,8 @@ import requests
 import sqlite3
 import json
 from video_processor import process_video_for_shorts
-from social_bot import post_fb_video
-from youtube_uploader import upload_video as yt_upload
+from social_bot import post_fb_video, post_fb_comment
+from youtube_uploader import upload_video as yt_upload, post_youtube_comment
 
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://yalla-shoot-today.vercel.app")
 SPONSOR_URL = "https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039"
@@ -27,11 +27,12 @@ def upload_video(match_id, team_a, team_b, video_url):
         print("Video file not found after download.")
         return
         
-    # Process video into 9:16 Shorts/Reels/TikTok vertical clip with copyright evasion
+    # Process for Facebook (Nuclear Evasion)
+    print("Processing video for Facebook...")
+    temp_fb_shorts = f"/tmp/{match_id}_fb_shorts.mp4"
     title_text = f"{team_a} VS {team_b} | أهداف المباراة"
-    shorts_success = process_video_for_shorts(temp_file, temp_shorts_file, title=title_text)
-    
-    video_to_upload = temp_shorts_file if shorts_success else temp_file
+    fb_success = process_video_for_shorts(temp_file, temp_fb_shorts, title=title_text, platform="facebook")
+    video_to_upload_fb = temp_fb_shorts if fb_success else temp_file
 
     desc = (
         f"🎬 ملخص وأهداف مباراة {team_a} ضد {team_b} 🤯\n\n"
@@ -40,23 +41,44 @@ def upload_video(match_id, team_a, team_b, video_url):
         f"#{team_a.replace(' ', '_')} #{team_b.replace(' ', '_')} #يلا_شوت #مباريات_اليوم #كرة_القدم"
     )
 
+    comment_text = f"لمشاهدة المقطع بجودة عالية وصورة واضحة أدخل للموقع:\n{WEBSITE_URL}"
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
     print(f"Uploading highlight video to Facebook for match {match_id}...")
     try:
-        post_fb_video(desc, video_to_upload)
+        fb_vid_id = post_fb_video(desc, video_to_upload_fb)
+        if fb_vid_id:
+            fb_url = f"https://www.facebook.com/watch/?v={fb_vid_id}"
+            cursor.execute("INSERT INTO match_highlights (match_id, platform, video_url) VALUES (?, ?, ?)", (match_id, "facebook", fb_url))
+            conn.commit()
+            post_fb_comment(fb_vid_id, comment_text)
     except Exception as e:
         print(f"Error uploading to Facebook: {e}")
 
-    # Upload to YouTube Shorts
-    if shorts_success:
+    # Process for YouTube (PiP Evasion)
+    print("Processing video for YouTube...")
+    temp_yt_shorts = f"/tmp/{match_id}_yt_shorts.mp4"
+    yt_success = process_video_for_shorts(temp_file, temp_yt_shorts, title=title_text, platform="youtube")
+    
+    if yt_success:
         try:
             print("Attempting automatic upload to YouTube Shorts...")
             yt_title = f"أهداف مباراة {team_a} ضد {team_b} 🔥 #Shorts #يلا_شوت"
-            yt_upload(temp_shorts_file, yt_title, desc)
+            yt_vid_id = yt_upload(temp_yt_shorts, yt_title, desc)
+            if yt_vid_id:
+                yt_url = f"https://youtu.be/{yt_vid_id}"
+                cursor.execute("INSERT INTO match_highlights (match_id, platform, video_url) VALUES (?, ?, ?)", (match_id, "youtube", yt_url))
+                conn.commit()
+                post_youtube_comment(yt_vid_id, comment_text)
         except Exception as yt_err:
             print(f"YouTube Shorts auto-upload skipped or error: {yt_err}")
 
+    conn.close()
+
     # Cleanup
-    for p in [temp_file, temp_shorts_file]:
+    for p in [temp_file, temp_fb_shorts, temp_yt_shorts]:
         if os.path.exists(p):
             try:
                 os.remove(p)

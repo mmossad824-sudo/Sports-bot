@@ -45,15 +45,50 @@ def get_access_token() -> str | None:
         return None
 
 
-def upload_video(video_path: str, title: str, description: str, tags: list = None) -> bool:
-    """رفع فيديو مباشر إلى القناة عبر YouTube Data API Resumable Upload"""
+def post_youtube_comment(video_id: str, message: str) -> bool:
+    """Post a top-level comment on a YouTube video."""
     access_token = get_access_token()
     if not access_token:
         return False
+    
+    url = "https://www.googleapis.com/youtube/v3/commentThreads?part=snippet"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json; charset=UTF-8"
+    }
+    payload = {
+        "snippet": {
+            "videoId": video_id,
+            "topLevelComment": {
+                "snippet": {
+                    "textOriginal": message
+                }
+            }
+        }
+    }
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=30)
+        data = r.json()
+        if r.status_code == 200 and data.get("id"):
+            logger.info(f"✅ YT Comment posted on video {video_id}")
+            return True
+        else:
+            logger.error(f"YT Comment failed: {r.status_code} — {r.text[:300]}")
+            return False
+    except Exception as e:
+        logger.error(f"YT Comment exception: {e}")
+        return False
+
+
+def upload_video(video_path: str, title: str, description: str, tags: list = None) -> str:
+    """رفع فيديو مباشر إلى القناة عبر YouTube Data API Resumable Upload. Returns video_id."""
+    access_token = get_access_token()
+    if not access_token:
+        return None
 
     if not os.path.exists(video_path):
         logger.error(f"ملف الفيديو غير موجود: {video_path}")
-        return False
+        return None
 
     upload_url = "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status"
     headers = {
@@ -81,12 +116,12 @@ def upload_video(video_path: str, title: str, description: str, tags: list = Non
         init_res = requests.post(upload_url, headers=headers, data=json.dumps(snippet), timeout=30)
         if init_res.status_code != 200:
             logger.error(f"فشل إنشاء جلسة الرفع على يوتيوب: {init_res.text}")
-            return False
+            return None
 
         resumable_url = init_res.headers.get("Location")
         if not resumable_url:
             logger.error("لم يتم استلام رابط الرفع من يوتيوب.")
-            return False
+            return None
 
         # 2. Upload Video Binary Bytes
         with open(video_path, "rb") as f:
@@ -101,14 +136,14 @@ def upload_video(video_path: str, title: str, description: str, tags: list = Non
             video_data = upload_res.json()
             video_id = video_data.get("id")
             logger.info(f"🎉 تم رفع الفيديو بنجاح على قناتك في يوتيوب! رابط الفيديو: https://youtu.be/{video_id}")
-            return True
+            return video_id
         else:
             logger.error(f"فشل رفع ملف الفيديو: {upload_res.text}")
-            return False
+            return None
 
     except Exception as e:
         logger.error(f"حدث استثناء أثناء رفع الفيديو ليوتيوب: {e}")
-        return False
+        return None
 
 
 if __name__ == "__main__":

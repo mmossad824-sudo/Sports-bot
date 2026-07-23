@@ -146,11 +146,27 @@ def get_matches():
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM matches")
     rows = cursor.fetchall()
+    
+    try:
+        cursor.execute("SELECT * FROM match_highlights")
+        hl_rows = cursor.fetchall()
+        highlights_by_match = {}
+        for hl in hl_rows:
+            hl_dict = dict(hl)
+            m_id = hl_dict["match_id"]
+            if m_id not in highlights_by_match:
+                highlights_by_match[m_id] = []
+            highlights_by_match[m_id].append(hl_dict)
+    except sqlite3.OperationalError:
+        highlights_by_match = {}
+
     conn.close()
     
     matches = []
     for r in rows:
-        matches.append(dict(r))
+        m_dict = dict(r)
+        m_dict["highlights"] = highlights_by_match.get(m_dict["id"], [])
+        matches.append(m_dict)
     return matches
 
 @app.get("/api/matches/{match_id}")
@@ -163,12 +179,22 @@ def get_match_detail(match_id: str):
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM matches WHERE id = ?", (match_id,))
     row = cursor.fetchone()
+    
+    try:
+        cursor.execute("SELECT * FROM match_highlights WHERE match_id = ?", (match_id,))
+        hl_rows = cursor.fetchall()
+        highlights = [dict(hl) for hl in hl_rows]
+    except sqlite3.OperationalError:
+        highlights = []
+        
     conn.close()
     
     if not row:
         raise HTTPException(status_code=404, detail="Match not found")
         
-    return dict(row)
+    match_dict = dict(row)
+    match_dict["highlights"] = highlights
+    return match_dict
 
 @app.post("/api/scrape")
 def trigger_scrape(background_tasks: BackgroundTasks):

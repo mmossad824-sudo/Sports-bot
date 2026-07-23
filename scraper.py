@@ -86,6 +86,14 @@ def init_db():
             last_telegram_scoreB TEXT
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS match_highlights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id TEXT,
+            platform TEXT,
+            video_url TEXT
+        )
+    """)
     
     # Run migrations for all potentially missing columns
     columns = [
