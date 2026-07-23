@@ -1,7 +1,11 @@
-name: 🎬 Test YouTube Upload
-on: workflow_dispatch
+name: 🎬 Test YouTube Nuclear Upload
+on: 
+  push:
+    paths:
+      - '.github/workflows/test_youtube.yml'
+  workflow_dispatch:
 jobs:
-  test-yt:
+  test-yt-nuclear:
     runs-on: ubuntu-latest
     steps:
       - name: 📦 Checkout
@@ -14,10 +18,14 @@ jobs:
           cache: "pip"
 
       - name: 🛠️ Install dependencies
-        run: pip install requests google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
-          
-      - name: 🎥 Download Video
-        run: curl -L "https://h.uguu.se/VTktSdnq.mp4" -o /tmp/spain_arabic_shorts.mp4
+        run: |
+          pip install requests google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client yt-dlp
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: 🎥 Download & Process Egypt Goal
+        run: |
+          yt-dlp "ytsearch1:هدف مصر والمغرب" -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" -o "/tmp/egypt_goal.mp4"
+          python3 video_processor.py /tmp/egypt_goal.mp4 /tmp/egypt_processed_nuclear.mp4 "مصر والمغرب"
 
       - name: 🚀 Upload to YT
         env:
@@ -28,14 +36,14 @@ jobs:
           python3 -c "
           import os, sys, traceback
           from youtube_uploader import upload_to_youtube_shorts
-          
-          output_video = '/tmp/spain_arabic_shorts.mp4'
-          title = 'هدف إسبانيا التاريخي 🤯 (تعليق الشوالي)'
-          desc = f'{title}\n\n#كأس_العالم #اسبانيا #الارجنتين #كرة_القدم'
-          
+
+          output_video = '/tmp/egypt_processed_nuclear.mp4'
+          title = 'اختبار الفلتر النووي ☢️: هدف مصري'
+          desc = f'{title}\n\n#كأس_العالم #مصر #كرة_القدم'
+
           try:
-              upload_to_youtube_shorts(output_video, title[:90] + ' #shorts', desc, ['كرة_القدم', 'عصام_الشوالي', 'يلا_شوت'])
-              print('✅ YT success')
+              upload_to_youtube_shorts(output_video, title[:90] + ' #shorts', desc, ['كرة_القدم', 'مصر', 'يلا_شوت'])
+              print('✅ YT Nuclear success')
           except Exception as e:
               print('❌ YT failed:', traceback.format_exc())
           "
