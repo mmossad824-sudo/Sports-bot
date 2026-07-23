@@ -1,4 +1,6 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import sys
 import subprocess
 import requests
@@ -7,11 +9,12 @@ import json
 from video_processor import process_video_for_shorts
 from social_bot import (
     post_fb_video, post_fb_comment,
-    TELEGRAM_GROUP_URL, YT_CHANNEL_URL, TIKTOK_PROFILE_URL
+    YT_CHANNEL_URL, TIKTOK_PROFILE_URL
 )
 from youtube_uploader import upload_video as yt_upload, post_youtube_comment
 
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://yalla-shoot-today.vercel.app")
+TELEGRAM_GROUP_URL = "https://t.me/yalla_shoot_today_Group"
 SPONSOR_URL = "https://www.profitablecpmrate.com/e4480b4a0a4ef0a7e842009f7c505039"
 DB_PATH    = os.path.join(os.path.dirname(__file__), "matches.db")
 
@@ -40,8 +43,8 @@ def upload_video(match_id, team_a, team_b, video_url):
     desc = (
         f"🚨🔥 شاهد الآن: ملخص وأهداف المباراة النارية بين {team_a} و {team_b} 🤯⚽\n"
         f"لا تفوت فرصة مشاهدة كل اللقطات الحاسمة والأهداف الخرافية من هذه المواجهة الكروية المثيرة!\n\n"
-        f"🔴 🖥️ لمشاهدة ملخصات أخرى ومتابعة البث المباشر بأعلى جودة وبدون تقطيع ادخل لموقعنا:\n"
-        f"👉 {WEBSITE_URL} 👈\n\n"
+        f"📌 لمشاهدة المقطع بجودة عالية وصورة واضحة كاملة، بالإضافة للبث المباشر لكل المباريات بدون تقطيع، "
+        f"تفضل بزيارة موقعنا الآن:\n🔗 {WEBSITE_URL}\n\n"
         f"📱 تابعنا على منصاتنا لتغطية حصرية 24/7:\n"
         f"💬 تليجرام: {TELEGRAM_GROUP_URL}\n"
         f"▶️ يوتيوب: {YT_CHANNEL_URL}\n"
@@ -85,7 +88,6 @@ def upload_video(match_id, team_a, team_b, video_url):
                 yt_url = f"https://youtu.be/{yt_vid_id}"
                 cursor.execute("INSERT INTO match_highlights (match_id, platform, video_url) VALUES (?, ?, ?)", (match_id, "youtube", yt_url))
                 conn.commit()
-                post_youtube_comment(yt_vid_id, comment_text)
         except Exception as yt_err:
             print(f"YouTube Shorts auto-upload skipped or error: {yt_err}")
 
