@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import sqlite3
 import os
 from datetime import datetime
-from scraper import scrape_yallakora, update_live_streams, init_db, DB_PATH
+from scraper import scrape_yallakora, update_live_streams, init_db, DB_PATH, cleanup_old_data
 from bot import broadcast_schedule, check_and_send_alerts
 from zoneinfo import ZoneInfo
 
@@ -31,6 +31,7 @@ def scrape_three_days():
 # Background Jobs wrapper
 def job_morning_scrape():
     print(f"[{datetime.now().isoformat()}] Starting scheduled morning scrape...")
+    cleanup_old_data()
     scrape_three_days()
     try:
         broadcast_schedule()

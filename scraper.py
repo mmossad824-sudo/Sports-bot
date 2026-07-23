@@ -115,6 +115,34 @@ def init_db():
     conn.commit()
     conn.close()
 
+def cleanup_old_data():
+    """Clean up matches and highlights older than 2 days to save space."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # match_date format is usually MM/DD/YYYY, let's use python datetime to parse and check.
+    # Actually, the simplest way is to fetch all matches, parse match_date, and delete if old.
+    try:
+        cursor.execute("SELECT id, match_date FROM matches")
+        rows = cursor.fetchall()
+        now = datetime.utcnow()
+        for row in rows:
+            m_id, m_date_str = row
+            if m_date_str:
+                try:
+                    m_date = datetime.strptime(m_date_str, "%m/%d/%Y")
+                    # If match is older than 2 days
+                    if (now - m_date).days > 2:
+                        cursor.execute("DELETE FROM matches WHERE id = ?", (m_id,))
+                        cursor.execute("DELETE FROM match_highlights WHERE match_id = ?", (m_id,))
+                except Exception as e:
+                    logger.error(f"Error parsing date for cleanup: {e}")
+        conn.commit()
+        logger.info("✅ Old matches and highlights cleaned up successfully.")
+    except Exception as e:
+        logger.error(f"Failed to clean up old data: {e}")
+    finally:
+        conn.close()
+
 def save_matches_to_db(matches, match_date):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
