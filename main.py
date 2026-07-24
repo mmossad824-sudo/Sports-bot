@@ -304,6 +304,57 @@ def proxy_iframe(url: str):
             status_code=500
         )
 
+@app.get("/api/news")
+def get_all_news():
+    if not os.path.exists(DB_PATH):
+        return []
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, title, source, link, pub_date, image_url, created_at FROM news ORDER BY pub_date DESC LIMIT 50")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+@app.get("/api/news/{news_id}")
+def get_news(news_id: str):
+    if not os.path.exists(DB_PATH):
+        raise HTTPException(status_code=404, detail="Database not found")
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM news WHERE id = ?", (news_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    raise HTTPException(status_code=404, detail="News not found")
+
+@app.post("/api/news")
+def add_news(data: dict):
+    if not os.path.exists(DB_PATH):
+        raise HTTPException(status_code=404, detail="Database not found")
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT OR REPLACE INTO news 
+        (id, title, content, source, link, pub_date, image_url, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        data.get("id"),
+        data.get("title"),
+        data.get("content"),
+        data.get("source"),
+        data.get("link"),
+        data.get("pub_date"),
+        data.get("image_url", ""),
+        datetime.now().isoformat()
+    ))
+    conn.commit()
+    conn.close()
+    return {"message": "News added successfully"}
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -101,6 +101,19 @@ def init_db():
             video_url TEXT
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS news (
+            id TEXT PRIMARY KEY,
+            title TEXT,
+            content TEXT,
+            source TEXT,
+            link TEXT,
+            pub_date TEXT,
+            image_url TEXT,
+            created_at TEXT
+        )
+    """)
+    
     
     # Run migrations for all potentially missing columns
     columns = [

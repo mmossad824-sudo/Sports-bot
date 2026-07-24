@@ -702,6 +702,30 @@ def tg_send_message(text: str, btn_text: str = None, btn_url: str = None) -> boo
 
 
 # ─── نظام الأخبار RSS ────────────────────────────────────────────────────────
+def extract_article_content(url: str) -> str:
+    """Extract main text content from a news URL using BeautifulSoup."""
+    try:
+        from bs4 import BeautifulSoup
+        headers = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(r.content, "html.parser")
+        
+        # Remove noisy elements
+        for element in soup(["script", "style", "nav", "footer", "header", "aside"]):
+            element.extract()
+            
+        paragraphs = soup.find_all('p')
+        # Filter short paragraphs and join
+        text = "\n\n".join([p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40])
+        
+        # Simple text modification to make it slightly unique
+        text = text.replace("،", "، ").replace("  ", " ")
+        
+        return text if len(text) > 150 else ""
+    except Exception as e:
+        logger.warning(f"Error extracting article from {url}: {e}")
+        return ""
+
 def is_football_news(title: str, desc: str = "") -> bool:
     """Return True only if the news item is football-related and not blocked."""
     text = (title + " " + desc).lower()
@@ -717,16 +741,19 @@ def is_football_news(title: str, desc: str = "") -> bool:
     logger.info(f"⛔ Not football news (no keywords): {title[:60]}")
     return False
 
-
 def fetch_rss_news(max_per_feed: int = 3) -> list[dict]:
-    """Fetch latest FOOTBALL-ONLY news from RSS feeds."""
+    """Fetch latest FOOTBALL-ONLY news from RSS feeds and save full content to backend."""
+    import xml.etree.ElementTree as ET
     all_items = []
+    
+    # We need a URL to post news to HF Space backend
+    HF_API_URL = "https://mmossad824-sports-bot.hf.space/api/news"
+    
     for feed in RSS_FEEDS:
         try:
             headers = {"User-Agent": "Mozilla/5.0 Sports-Bot/2.0"}
             r = requests.get(feed["url"], headers=headers, timeout=15)
             if r.status_code != 200:
-                logger.warning(f"RSS feed {feed['name']} returned {r.status_code}")
                 continue
             root = ET.fromstring(r.content)
             channel = root.find("channel")
@@ -746,6 +773,31 @@ def fetch_rss_news(max_per_feed: int = 3) -> list[dict]:
                 # ⚽ Football-only filter
                 if not is_football_news(title, desc):
                     continue
+                    
+                news_id = hashlib.md5(title.encode()).hexdigest()[:12]
+                full_content = extract_article_content(link)
+                
+                # Default image if available in RSS (enclosure)
+                image_url = ""
+                enclosure = item.find("enclosure")
+                if enclosure is not None and enclosure.get("url"):
+                    image_url = enclosure.get("url")
+                
+                # Send to our backend
+                if full_content:
+                    try:
+                        requests.post(HF_API_URL, json={
+                            "id": news_id,
+                            "title": title,
+                            "content": full_content,
+                            "source": feed["name"],
+                            "link": link,
+                            "pub_date": pub,
+                            "image_url": image_url
+                        }, timeout=10)
+                    except Exception as e:
+                        logger.warning(f"Failed to post news to backend: {e}")
+                
                 all_items.append({
                     "title": title,
                     "link": link,
@@ -753,7 +805,7 @@ def fetch_rss_news(max_per_feed: int = 3) -> list[dict]:
                     "desc": desc,
                     "source": feed["name"],
                     "lang": feed["lang"],
-                    "id": hashlib.md5(title.encode()).hexdigest()[:12],
+                    "id": news_id,
                 })
                 added += 1
         except Exception as e:
@@ -766,14 +818,17 @@ def format_news_post(item: dict) -> tuple[str, str]:
     """Returns (fb_text, tg_text) for a news item."""
     title  = item["title"]
     source = item["source"]
-    link   = item["link"]
+    news_id = item["id"]
     lang   = item.get("lang", "ar")
+    
+    # Use our website link instead of the external source
+    our_article_url = f"{WEBSITE_URL}/article.html?id={news_id}"
 
     if lang == "ar":
         fb_text = (
             f"⚽ {title}\n\n"
             f"📌 المصدر: {source}\n"
-            f"🔗 {link}\n\n"
+            f"🔗 اقرأ المقال كاملاً من هنا:\n{our_article_url}\n\n"
             f"📺 شاهد المباريات مباشرة بجودة HD:\n{WEBSITE_URL}\n\n"
             f"▶️ يوتيوب: {YT_CHANNEL_URL}\n"
             f"🎵 تيك توك: {TIKTOK_PROFILE_URL}\n\n"
@@ -782,14 +837,14 @@ def format_news_post(item: dict) -> tuple[str, str]:
         tg_text = (
             f"⚽ <b>{title}</b>\n\n"
             f"📌 المصدر: <b>{source}</b>\n"
-            f"🔗 <a href='{link}'>اقرأ المزيد</a>\n\n"
+            f"🔗 <a href='{our_article_url}'>اقرأ المقال كاملاً من هنا</a>\n\n"
             f"📺 <a href='{WEBSITE_URL}'>شاهد المباريات مباشرة</a>"
         )
     else:
         fb_text = (
             f"⚽ {title}\n\n"
             f"📌 Source: {source}\n"
-            f"🔗 {link}\n\n"
+            f"🔗 Read full article here:\n{our_article_url}\n\n"
             f"📺 Watch Live HD Football:\n{WEBSITE_URL}\n\n"
             f"▶️ YouTube: {YT_CHANNEL_URL}\n"
             f"🎵 TikTok: {TIKTOK_PROFILE_URL}\n\n"
@@ -798,7 +853,7 @@ def format_news_post(item: dict) -> tuple[str, str]:
         tg_text = (
             f"⚽ <b>{title}</b>\n\n"
             f"📌 Source: <b>{source}</b>\n"
-            f"🔗 <a href='{link}'>Read more</a>\n\n"
+            f"🔗 <a href='{our_article_url}'>Read full article here</a>\n\n"
             f"📺 <a href='{WEBSITE_URL}'>Watch Live Football</a>"
         )
     return fb_text, tg_text

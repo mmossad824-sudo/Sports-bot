@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f1420">
+    <title>يلا شوت - أحدث الأخبار | Yalla Shoot - Latest News</title>
+    <meta name="description" content="أحدث أخبار كرة القدم المحلية والعالمية.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css?v=4.0">
+    <style>
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .news-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .news-card:hover {
+            transform: translateY(-5px);
+        }
+        .news-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: #1a2235;
+        }
+        .news-content {
+            padding: 15px;
+        }
+        .news-title {
+            font-family: 'Cairo', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .news-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #8da3c7;
+        }
+        .page-title {
+            text-align: center;
+            font-family: 'Cairo', sans-serif;
+            margin: 30px 0 10px;
+            font-size: 2rem;
+            color: var(--accent);
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #8da3c7;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header class="site-header" id="site-header">
+    <div class="hdr-inner">
+        <a class="hdr-logo" href="/">
+            <i class="fa-solid fa-circle-play"></i>
+            <span>يلا <span class="hdr-logo-accent">شوت</span></span>
+        </a>
+        <div class="hdr-actions">
+            <a href="/news.html" class="hdr-icon-btn news-link-btn" style="text-decoration:none; display:flex; align-items:center; gap:5px; font-family: 'Cairo', sans-serif;">
+                <i class="fa-regular fa-newspaper"></i> <span>الأخبار</span>
+            </a>
+            <button class="hdr-icon-btn lang-toggle-btn" id="lang-toggle-btn" aria-label="Switch Language" title="Switch Language / تغيير اللغة">English</button>
+        </div>
+    </div>
+</header>
+
+<main class="site-main" style="padding-top: 70px; min-height: 80vh;">
+    <h1 class="page-title">أحدث الأخبار</h1>
+    
+    <div id="news-container" class="news-grid">
+        <div class="loading"><i class="fa-solid fa-spinner fa-spin fa-2x"></i></div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="ft-social">
+        <a href="https://web.facebook.com/profile.php?id=61592307475993" class="ft-btn ft-fb"><i class="fa-brands fa-facebook-f"></i> فيسبوك</a>
+        <a href="https://t.me/yalla_shoot_today_Group" class="ft-btn ft-tg"><i class="fa-brands fa-telegram"></i> قناة التليجرام</a>
+        <a href="https://youtube.com/@yalla_shoot_today" class="ft-btn ft-yt"><i class="fa-brands fa-youtube"></i> يوتيوب</a>
+        <a href="https://tiktok.com/@yalla_shoot_today" class="ft-btn ft-tt"><i class="fa-brands fa-tiktok"></i> تيك توك</a>
+    </div>
+    <p class="ft-copy">© 2026 يلا شوت — الموقع الأول للأخبار الرياضية والمباريات</p>
+</footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+    const container = document.getElementById("news-container");
+    try {
+        const res = await fetch("https://mmossad824-sports-bot.hf.space/api/news");
+        if (!res.ok) throw new Error("Network response was not ok");
+        const news = await res.json();
+        
+        container.innerHTML = "";
+        if (news.length === 0) {
+            container.innerHTML = "<div class='loading'>لا توجد أخبار حالياً</div>";
+            return;
+        }
+
+        news.forEach(item => {
+            const card = document.createElement("a");
+            card.className = "news-card";
+            card.href = `/article.html?id=${item.id}`;
+            
+            const imgHtml = item.image_url 
+                ? `<img src="${item.image_url}" alt="News Image" class="news-img" loading="lazy" onerror="this.style.display='none'">` 
+                : `<div class="news-img" style="display:flex;align-items:center;justify-content:center;font-size:3rem;color:#2a3655;"><i class="fa-regular fa-futbol"></i></div>`;
+                
+            let dateStr = "";
+            if (item.pub_date) {
+                dateStr = new Date(item.pub_date).toLocaleDateString('ar-EG', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+            }
+
+            card.innerHTML = `
+                ${imgHtml}
+                <div class="news-content">
+                    <div class="news-title">${item.title}</div>
+                    <div class="news-meta">
+                        <span><i class="fa-solid fa-rss"></i> ${item.source}</span>
+                        <span>${dateStr}</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (err) {
+        console.error("Error loading news:", err);
+        container.innerHTML = "<div class='loading'>فشل تحميل الأخبار. يرجى المحاولة لاحقاً.</div>";
+    }
+});
+</script>
+</body>
+</html>
