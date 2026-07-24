@@ -99,8 +99,14 @@ def run_ffmpeg_stream(stream_url: str, score_file_path: str):
 
     filter_complex = (
         f"drawtext=fontfile='{FONT_PATH}':textfile='{score_file_path}':reload=1:"
-        f"fontcolor=white:fontsize=80:x=(w-text_w)/2:y=(h-text_h)/2:"
-        f"box=1:boxcolor=black@0.6:boxborderw=20,format=yuv420p"
+        f"fontcolor=white:fontsize=80:x=(w-text_w)/2:y=(h-text_h)/2-50:"
+        f"box=1:boxcolor=black@0.6:boxborderw=20,"
+        f"drawtext=fontfile='{FONT_PATH}':text='المباراة غير منقولة هنا.. الرابط في الوصف':"
+        f"fontcolor=yellow:fontsize=50:x=(w-text_w)/2:y=h-180:"
+        f"box=1:boxcolor=black@0.8:boxborderw=15,"
+        f"drawtext=fontfile='{FONT_PATH}':text='{WEBSITE_URL.replace('https://', '')}':"
+        f"fontcolor=white:fontsize=45:x=(w-text_w)/2:y=h-100:"
+        f"box=1:boxcolor=blue@0.6:boxborderw=15,format=yuv420p"
     )
 
     cmd = [
