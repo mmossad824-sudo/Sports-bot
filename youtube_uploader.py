@@ -145,6 +145,126 @@ def upload_video(video_path: str, title: str, description: str, tags: list = Non
         logger.error(f"حدث استثناء أثناء رفع الفيديو ليوتيوب: {e}")
         return None
 
+def create_youtube_live(title: str, description: str, scheduled_start_time: str = None) -> dict | None:
+    """
+    Create a YouTube Live Broadcast and bind it to a stream.
+    Returns dict with {broadcast_id, stream_id, stream_key, rtmp_url, watch_url} or None on failure.
+    scheduled_start_time: ISO 8601 string e.g. '2026-07-24T22:00:00+03:00'. If None, starts immediately.
+    """
+    access_token = get_access_token()
+    if not access_token:
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json; charset=UTF-8"
+    }
+
+    # 1. Create Broadcast
+    broadcast_url = "https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet,status,contentDetails"
+    now_utc = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    start_time = scheduled_start_time or now_utc
+    broadcast_body = {
+        "snippet": {
+            "title": title[:100],
+            "description": description[:5000],
+            "scheduledStartTime": start_time
+        },
+        "status": {
+            "privacyStatus": "public",
+            "selfDeclaredMadeForKids": False
+        },
+        "contentDetails": {
+            "enableAutoStart": True,
+            "enableAutoStop": True,
+            "enableDvr": True,
+            "recordFromStart": True,
+            "startWithSlate": False
+        }
+    }
+
+    try:
+        r = requests.post(broadcast_url, headers=headers, json=broadcast_body, timeout=30)
+        bc_data = r.json()
+        if r.status_code not in (200, 201) or "id" not in bc_data:
+            logger.error(f"Failed to create broadcast: {r.text[:300]}")
+            return None
+        broadcast_id = bc_data["id"]
+        logger.info(f"✅ YouTube Broadcast created: {broadcast_id}")
+
+        # 2. Create Stream
+        stream_url = "https://www.googleapis.com/youtube/v3/liveStreams?part=snippet,cdn"
+        stream_body = {
+            "snippet": {"title": title[:100]},
+            "cdn": {
+                "frameRate": "30fps",
+                "ingestionType": "rtmp",
+                "resolution": "1080p"
+            }
+        }
+        r2 = requests.post(stream_url, headers=headers, json=stream_body, timeout=30)
+        st_data = r2.json()
+        if r2.status_code not in (200, 201) or "id" not in st_data:
+            logger.error(f"Failed to create stream: {r2.text[:300]}")
+            return None
+        stream_id = st_data["id"]
+        ingestion = st_data["cdn"]["ingestionInfo"]
+        rtmp_url = ingestion["ingestionAddress"]
+        stream_key = ingestion["streamName"]
+        logger.info(f"✅ YouTube Stream created: {stream_id} | RTMP: {rtmp_url}")
+
+        # 3. Bind broadcast to stream
+        bind_url = f"https://www.googleapis.com/youtube/v3/liveBroadcasts/bind?id={broadcast_id}&part=id,contentDetails&streamId={stream_id}"
+        r3 = requests.post(bind_url, headers=headers, json={}, timeout=30)
+        if r3.status_code != 200:
+            logger.error(f"Failed to bind broadcast: {r3.text[:200]}")
+        else:
+            logger.info(f"✅ Broadcast bound to stream successfully")
+
+        watch_url = f"https://www.youtube.com/watch?v={broadcast_id}"
+        return {
+            "broadcast_id": broadcast_id,
+            "stream_id": stream_id,
+            "stream_key": stream_key,
+            "rtmp_url": rtmp_url,
+            "rtmp_full": f"{rtmp_url}/{stream_key}",
+            "watch_url": watch_url
+        }
+
+    except Exception as e:
+        logger.error(f"Exception creating YouTube live: {e}")
+        return None
+
+
+def end_youtube_live(broadcast_id: str) -> bool:
+    """Transition a YouTube Live Broadcast to 'complete' state."""
+    access_token = get_access_token()
+    if not access_token or not broadcast_id:
+        return False
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    url = f"https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=complete&id={broadcast_id}&part=id,status"
+    try:
+        r = requests.post(url, headers=headers, json={}, timeout=20)
+        if r.status_code == 200:
+            logger.info(f"✅ YouTube Live {broadcast_id} ended.")
+            return True
+        else:
+            logger.error(f"Failed to end YouTube live: {r.text[:200]}")
+            return False
+    except Exception as e:
+        logger.error(f"Exception ending YouTube live: {e}")
+        return False
+
+
+# Alias for backward compatibility with test_youtube.yml and other callers
+def upload_to_youtube_shorts(video_path: str, title: str, description: str, tags: list = None) -> str:
+    """Alias for upload_video — uploads a Short/video to YouTube."""
+    return upload_video(video_path, title, description, tags)
+
 
 if __name__ == "__main__":
     logger.info("اختبار فحص مكتبة أتمتة يوتيوب...")
+

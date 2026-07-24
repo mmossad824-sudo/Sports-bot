@@ -419,20 +419,22 @@ def get_today_matches() -> list[dict]:
         if r.status_code == 200:
             all_matches = r.json()
             now_cairo = datetime.utcnow() + timedelta(hours=3)
-            today_str = now_cairo.strftime("%m/%d")
-            today_alt = now_cairo.strftime("%-m/%-d")
-            today_alt2 = f"{now_cairo.month}/{now_cairo.day}"  # no leading zeros
-            today_dates = {today_str, today_alt, today_alt2}
+            # DB stores match_date as YYYY-MM-DD
+            today_db = now_cairo.strftime("%Y-%m-%d")
+            # Legacy fallback formats (MM/DD, M/D)
+            today_mm_dd = now_cairo.strftime("%m/%d")
+            today_m_d  = f"{now_cairo.month}/{now_cairo.day}"
+            today_dates = {today_db, today_mm_dd, today_m_d}
 
-            # Try to filter by date first
+            # Filter by match_date OR date field (support both field names)
             today_matches = [
                 m for m in all_matches
-                if m.get("date") in today_dates
+                if (m.get("match_date") in today_dates or m.get("date") in today_dates)
                 and m.get("status") != "انتهت"
             ]
 
             if today_matches:
-                logger.info(f"Got {len(today_matches)} today matches from HF API")
+                logger.info(f"Got {len(today_matches)} today matches from HF API (date={today_db})")
                 return today_matches
 
             # If matches have empty date or no date filter, return all non-finished
@@ -478,11 +480,14 @@ def get_all_today_matches_for_schedule() -> list[dict]:
         if r.status_code == 200:
             all_matches = r.json()
             now_cairo = datetime.utcnow() + timedelta(hours=3)
-            today_str = now_cairo.strftime("%m/%d")
-            today_alt = now_cairo.strftime("%-m/%-d")
+            # Support both YYYY-MM-DD (DB format) and legacy MM/DD formats
+            today_db   = now_cairo.strftime("%Y-%m-%d")
+            today_mm_dd = now_cairo.strftime("%m/%d")
+            today_m_d  = f"{now_cairo.month}/{now_cairo.day}"
+            today_dates = {today_db, today_mm_dd, today_m_d}
             return [
                 m for m in all_matches
-                if m.get("date") in (today_str, today_alt)
+                if m.get("match_date") in today_dates or m.get("date") in today_dates
             ]
     except Exception as e:
         logger.warning(f"get_all_today_matches error: {e}")

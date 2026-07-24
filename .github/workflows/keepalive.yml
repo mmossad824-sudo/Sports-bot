@@ -1,0 +1,29 @@
+name: 🫀 Keep HF Space Alive + Mini Alerts
+
+on:
+  schedule:
+    # Every 30 minutes — keeps HF Space awake (Free plan sleeps after 48h)
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    name: 🫀 Ping HF Space
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping HF Space root
+        run: |
+          echo "Pinging HF Space to keep it alive..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "${{ secrets.HF_API_URL }}/")
+          echo "HF Space HTTP status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ HF Space is alive"
+          else
+            echo "⚠️ HF Space returned status $STATUS — may be waking up"
+          fi
+
+      - name: Trigger stream update on HF
+        run: |
+          curl -s -X POST --max-time 30 "${{ secrets.HF_API_URL }}/api/update-streams" || true
+          echo "✅ Stream update triggered"

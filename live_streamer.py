@@ -62,6 +62,34 @@ def end_facebook_live(live_video_id: str):
     except Exception as e:
         logger.error(f"Failed to end FB live video: {e}")
 
+
+def start_youtube_live(title: str, description: str):
+    """Create a YouTube Live Broadcast + Stream and return (rtmp_full_url, broadcast_id)."""
+    try:
+        from youtube_uploader import create_youtube_live
+        result = create_youtube_live(title, description)
+        if result:
+            logger.info(f"✅ YouTube Live ready: {result['watch_url']}")
+            return result["rtmp_full"], result["broadcast_id"], result["watch_url"]
+        else:
+            logger.error("YouTube Live creation returned None.")
+            return None, None, None
+    except Exception as e:
+        logger.error(f"Exception starting YouTube live: {e}")
+        return None, None, None
+
+
+def end_youtube_live(broadcast_id: str):
+    """End a YouTube Live Broadcast."""
+    if not broadcast_id:
+        return
+    try:
+        from youtube_uploader import end_youtube_live as _end
+        _end(broadcast_id)
+    except Exception as e:
+        logger.error(f"Failed to end YouTube live: {e}")
+
+
 def run_ffmpeg_stream(stream_url: str, score_file_path: str):
     """Run FFmpeg to stream scoreboard to the given RTMP URL."""
     # Ensure score file exists
@@ -96,6 +124,7 @@ def run_ffmpeg_stream(stream_url: str, score_file_path: str):
     logger.info("Starting FFmpeg stream...")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Usage: python live_streamer.py <start|stop> <match_id> [team_a] [team_b]")
@@ -112,44 +141,83 @@ if __name__ == "__main__":
         team_b = sys.argv[4] if len(sys.argv) > 4 else "فريق 2"
         
         title = f"🔴 بث مباشر: {team_a} ضد {team_b}"
-        desc = f"لمشاهدة البث المباشر للمباراة كاملة وبدون تقطيع، تفضل بزيارة موقعنا:\n👉 {WEBSITE_URL}\n\n#يلا_شوت #بث_مباشر"
-        
-        # 1. Create Live Video
-        stream_url, live_vid_id = start_facebook_live(title, desc)
-        if not stream_url:
-            sys.exit(1)
-            
-        # 2. Start FFmpeg
-        proc = run_ffmpeg_stream(stream_url, score_file)
-        
-        # 3. Save metadata to stop it later
+        desc = (
+            f"🔴 بث مباشر: {team_a} ضد {team_b}\n\n"
+            f"📺 شاهد المباراة بدون تقطيع:\n👉 {WEBSITE_URL}\n\n"
+            f"#يلا_شوت #بث_مباشر #{team_a.replace(' ','_')} #{team_b.replace(' ','_')}"
+        )
+
+        meta = {}
+
+        # ── 1. Try YouTube Live first (primary) ────────────────────────────────
+        yt_rtmp, yt_broadcast_id, yt_watch_url = start_youtube_live(title, desc)
+        if yt_rtmp:
+            proc = run_ffmpeg_stream(yt_rtmp, score_file)
+            meta["pid"] = proc.pid
+            meta["yt_broadcast_id"] = yt_broadcast_id
+            meta["yt_watch_url"] = yt_watch_url
+            logger.info(f"✅ YouTube Live stream started | Watch: {yt_watch_url}")
+
+            # Save YouTube stream URL to HF Space database
+            hf_api = os.getenv("HF_API_URL", "https://mmossad824-sports-bot.hf.space")
+            try:
+                import json as _json
+                stream_sources = [{"name": "🔴 يوتيوب لايف", "type": "iframe", "url": yt_watch_url}]
+                requests.post(
+                    f"{hf_api}/api/matches/{match_id}/update",
+                    json={"stream_type": "multi", "stream_url": _json.dumps(stream_sources)},
+                    timeout=15
+                )
+                logger.info("✅ YouTube Live URL saved to HF DB")
+            except Exception as e:
+                logger.warning(f"Could not update HF DB with YT URL: {e}")
+        else:
+            # ── 2. Fallback to Facebook Live ───────────────────────────────────
+            logger.warning("YouTube Live failed — trying Facebook Live as fallback...")
+            fb_rtmp, fb_vid_id = start_facebook_live(title, desc)
+            if fb_rtmp:
+                proc = run_ffmpeg_stream(fb_rtmp, score_file)
+                meta["pid"] = proc.pid
+                meta["live_video_id"] = fb_vid_id
+                logger.info(f"✅ Facebook Live stream started | Video ID: {fb_vid_id}")
+            else:
+                logger.error("Both YouTube and Facebook Live failed. Exiting.")
+                sys.exit(1)
+
+        # Save metadata to stop it later
         with open(meta_file, "w") as f:
-            json.dump({"pid": proc.pid, "live_video_id": live_vid_id}, f)
-            
-        logger.info(f"Live stream started for {match_id} with PID {proc.pid}")
+            json.dump(meta, f)
+
+        logger.info(f"Live stream started for match {match_id} with PID {meta.get('pid')}")
         
     elif action == "stop":
         if os.path.exists(meta_file):
             with open(meta_file, "r") as f:
                 data = json.load(f)
             pid = data.get("pid")
-            vid_id = data.get("live_video_id")
-            
+            fb_vid_id = data.get("live_video_id")
+            yt_broadcast_id = data.get("yt_broadcast_id")
+
             # Kill FFmpeg
             if pid:
                 try:
-                    os.kill(pid, 15) # SIGTERM
+                    os.kill(pid, 15)  # SIGTERM
                     logger.info(f"Killed FFmpeg PID {pid}")
                 except ProcessLookupError:
                     pass
-                    
-            # End FB Live
-            if vid_id:
-                end_facebook_live(vid_id)
-                
-            # Cleanup
+
+            # End YouTube Live
+            if yt_broadcast_id:
+                end_youtube_live(yt_broadcast_id)
+
+            # End Facebook Live
+            if fb_vid_id:
+                end_facebook_live(fb_vid_id)
+
+            # Cleanup files
             for fpath in [meta_file, score_file]:
                 if os.path.exists(fpath):
                     os.remove(fpath)
-                    
-        logger.info(f"Live stream stopped for {match_id}")
+
+        logger.info(f"Live stream stopped for match {match_id}")
+
