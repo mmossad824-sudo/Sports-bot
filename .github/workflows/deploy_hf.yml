@@ -13,31 +13,73 @@ jobs:
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
-          lfs: true
+          python-version: "3.11"
 
-      - name: 🔧 Setup Git LFS
-        run: |
-          git lfs install
-          git lfs pull || true
+      - name: 📦 Install huggingface_hub
+        run: pip install huggingface_hub -q
 
-      - name: 🤗 Push to Hugging Face Space
+      - name: 🤗 Upload code files to HF Space via API
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git config --global user.email "bot@github-actions.com"
-          git config --global user.name "GitHub Actions Bot"
+          python3 << 'PYEOF'
+          import os
+          from huggingface_hub import HfApi
 
-          # Configure LFS for HF (binary files must use LFS)
-          git lfs track "*.mp3" "*.mp4" "*.png" "*.jpg" "*.ttf" || true
-          git add .gitattributes 2>/dev/null || true
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          repo_id = "mmossad824/sports-bot"
 
-          # Add HF remote
-          git remote add hf-deploy "https://mmossad824:${HF_TOKEN}@huggingface.co/spaces/mmossad824/sports-bot" || \
-          git remote set-url hf-deploy "https://mmossad824:${HF_TOKEN}@huggingface.co/spaces/mmossad824/sports-bot"
+          # Only upload text/code files — skip binary files already on HF
+          EXTENSIONS = {
+              ".py", ".yml", ".yaml", ".json", ".txt", ".md",
+              ".html", ".css", ".js", ".toml", ".cfg", ".ini",
+              ".gitignore", ".gitattributes"
+          }
 
-          # Push code only (Python files, configs) — skip large binary assets already on HF
-          git push hf-deploy main --force
-          echo "✅ Pushed to Hugging Face Space successfully"
+          SKIP_DIRS = {".git", "__pycache__", ".github", "node_modules", ".venv"}
+          SKIP_FILES = {"matches.db", "social_bot_state.json"}
+
+          uploaded = 0
+          failed = 0
+
+          for root, dirs, files in os.walk("."):
+              # Prune skip dirs in-place
+              dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+
+              for fname in files:
+                  # Skip binary files
+                  ext = os.path.splitext(fname)[1].lower()
+                  if ext not in EXTENSIONS and fname not in {".gitignore", ".gitattributes", "Dockerfile"}:
+                      print(f"  ⏭️  Skipping binary: {fname}")
+                      continue
+                  if fname in SKIP_FILES:
+                      continue
+
+                  local_path = os.path.join(root, fname)
+                  # Convert ./path/to/file -> path/to/file for HF
+                  hf_path = local_path.lstrip("./").lstrip("/")
+
+                  try:
+                      api.upload_file(
+                          path_or_fileobj=local_path,
+                          path_in_repo=hf_path,
+                          repo_id=repo_id,
+                          repo_type="space",
+                          commit_message=f"Auto-deploy: update {hf_path}"
+                      )
+                      print(f"  ✅ Uploaded: {hf_path}")
+                      uploaded += 1
+                  except Exception as e:
+                      print(f"  ❌ Failed: {hf_path} — {e}")
+                      failed += 1
+
+          print(f"\n🎉 Done! Uploaded: {uploaded} | Failed: {failed}")
+          if failed > 0:
+              exit(1)
+          PYEOF
+
 
