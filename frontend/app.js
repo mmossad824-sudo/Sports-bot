@@ -51,6 +51,7 @@ const TRANSLATIONS = {
         predictSub:     'اضغط الزر',
         predictTimes:   'مرات لبدء المشاهدة المجانية',
         watchNow:       'شاهد الآن مجاناً',
+        news:           'الأخبار',
     },
     en: {
         siteName:       'Yalla Shoot',
@@ -101,6 +102,7 @@ const TRANSLATIONS = {
         predictSub:     'Tap the button',
         predictTimes:   'times to watch for free',
         watchNow:       'Watch Now Free',
+        news:           'News',
     }
 };
 
