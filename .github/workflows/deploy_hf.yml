@@ -9,7 +9,7 @@ jobs:
   deploy-to-hf:
     name: 🤗 Push Code to HF Space
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
@@ -17,13 +17,27 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: 🔧 Setup Git LFS
+        run: |
+          git lfs install
+          git lfs pull || true
+
       - name: 🤗 Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           git config --global user.email "bot@github-actions.com"
           git config --global user.name "GitHub Actions Bot"
-          # Add HF remote using HF_TOKEN (hf_xxx format required)
-          git remote add hf-deploy "https://mmossad824:${HF_TOKEN}@huggingface.co/spaces/mmossad824/sports-bot" || true
+
+          # Configure LFS for HF (binary files must use LFS)
+          git lfs track "*.mp3" "*.mp4" "*.png" "*.jpg" "*.ttf" || true
+          git add .gitattributes 2>/dev/null || true
+
+          # Add HF remote
+          git remote add hf-deploy "https://mmossad824:${HF_TOKEN}@huggingface.co/spaces/mmossad824/sports-bot" || \
+          git remote set-url hf-deploy "https://mmossad824:${HF_TOKEN}@huggingface.co/spaces/mmossad824/sports-bot"
+
+          # Push code only (Python files, configs) — skip large binary assets already on HF
           git push hf-deploy main --force
-          echo "✅ Pushed to Hugging Face Space"
+          echo "✅ Pushed to Hugging Face Space successfully"
+
