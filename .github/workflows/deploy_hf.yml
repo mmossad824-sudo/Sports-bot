@@ -1,0 +1,29 @@
+name: 🚀 Deploy to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-to-hf:
+    name: 🤗 Push Code to HF Space
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: 🤗 Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "bot@github-actions.com"
+          git config --global user.name "GitHub Actions Bot"
+          # Add HF remote using HF_TOKEN (hf_xxx format required)
+          git remote add hf-deploy "https://mmossad824:${HF_TOKEN}@huggingface.co/spaces/mmossad824/sports-bot" || true
+          git push hf-deploy main --force
+          echo "✅ Pushed to Hugging Face Space"
