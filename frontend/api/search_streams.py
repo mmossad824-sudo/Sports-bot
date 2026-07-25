@@ -147,10 +147,33 @@ def search_stream_embed(team_a, team_b, channel="", match_link=""):
 
     # ── 4. Search yalla-shoot.tv via pattern ─────────────────────────────────
     try:
+        yalla_video_url = f"https://www.yallashoot.video/video/{a_slug}-vs-{b_slug}-live-stream-25-7-2026/"
+        
+        # Scrape yallashoot.video advanced JSON sources
+        try:
+            r = requests.get(yalla_video_url.replace('-25-7-2026', ''), headers=HEADERS, timeout=8)
+            if r.status_code == 404:
+                # Fallback to appending today's date if they require it
+                from datetime import datetime
+                today = datetime.now()
+                r = requests.get(f"https://www.yallashoot.video/video/{a_slug}-vs-{b_slug}-live-stream-{today.day}-{today.month}-{today.year}/", headers=HEADERS, timeout=8)
+            
+            if r.status_code == 200:
+                raw_matches = re.findall(r'\"name\":\"([^\"]+)\",\"src\":\"([^\"]+)\"', r.text)
+                for name, src in raw_matches:
+                    try:
+                        clean_name = name.encode('utf-8').decode('unicode_escape')
+                    except Exception:
+                        clean_name = name
+                    clean_src = src.replace('\\/', '/')
+                    if len(sources) < 8:
+                        add(clean_src, f"يلا شوت فيديو: {clean_name}")
+        except Exception as e:
+            print(f"[proxy] yallashoot.video scrape: {e}")
+
         pattern_urls = [
             f"https://yalla-shoot.tv/{a_slug}-vs-{b_slug}/",
             f"https://kooralive.net/{a_slug}-{b_slug}/",
-            f"https://www.yallashoot.video/video/{a_slug}-vs-{b_slug}-live-stream/",
         ]
         for url in pattern_urls:
             r = requests.get(url, headers=HEADERS, timeout=8, allow_redirects=True)
