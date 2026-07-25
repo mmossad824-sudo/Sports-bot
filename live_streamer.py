@@ -90,45 +90,85 @@ def end_youtube_live(broadcast_id: str):
         logger.error(f"Failed to end YouTube live: {e}")
 
 
-def run_ffmpeg_stream(stream_url: str, score_file_path: str):
-    """Run FFmpeg to stream scoreboard to the given RTMP URL."""
+def run_ffmpeg_stream(stream_url: str, score_file_path: str, team_a_file: str = None, team_b_file: str = None):
+    """Run FFmpeg to stream scoreboard to the given RTMP URL.
+    Uses lavfi color source (infinite) + looped crowd audio (stream_loop -1).
+    Team names and scores are read from text files (reload=1) to support Arabic.
+    """
     # Ensure score file exists
     if not os.path.exists(score_file_path):
         with open(score_file_path, "w", encoding="utf-8") as f:
-            f.write("تبدأ قريباً...")
+            f.write("0 - 0")
 
-    filter_complex = (
-        f"drawtext=fontfile='{FONT_PATH}':textfile='{score_file_path}':reload=1:"
-        f"fontcolor=white:fontsize=80:x=(w-text_w)/2:y=(h-text_h)/2-50:"
-        f"box=1:boxcolor=black@0.6:boxborderw=20,"
-        f"drawtext=fontfile='{FONT_PATH}':text='المباراة غير منقولة هنا.. الرابط في الوصف':"
-        f"fontcolor=yellow:fontsize=50:x=(w-text_w)/2:y=h-180:"
-        f"box=1:boxcolor=black@0.8:boxborderw=15,"
-        f"drawtext=fontfile='{FONT_PATH}':text='{WEBSITE_URL.replace('https://', '')}':"
-        f"fontcolor=white:fontsize=45:x=(w-text_w)/2:y=h-100:"
-        f"box=1:boxcolor=blue@0.6:boxborderw=15,format=yuv420p"
+    website = WEBSITE_URL.replace('https://', '').replace('http://', '')
+
+    # Build vf filter — use textfile for all dynamic content
+    vf_parts = []
+
+    # Team A (top left)
+    if team_a_file and os.path.exists(team_a_file):
+        vf_parts.append(
+            f"drawtext=fontfile='{FONT_PATH}':textfile='{team_a_file}':reload=1:"
+            f"fontcolor=white:fontsize=60:x=80:y=75:"
+            f"box=1:boxcolor=black@0.8:boxborderw=18"
+        )
+    # VS in center
+    vf_parts.append(
+        f"drawtext=fontfile='{FONT_PATH}':text='VS':"
+        f"fontcolor=0x00FF88:fontsize=55:x=(w-text_w)/2:y=80:"
+        f"box=1:boxcolor=black@0.75:boxborderw=15"
     )
+    # Team B (top right)
+    if team_b_file and os.path.exists(team_b_file):
+        vf_parts.append(
+            f"drawtext=fontfile='{FONT_PATH}':textfile='{team_b_file}':reload=1:"
+            f"fontcolor=white:fontsize=60:x=w-text_w-80:y=75:"
+            f"box=1:boxcolor=black@0.8:boxborderw=18"
+        )
+    # Score in center
+    vf_parts.append(
+        f"drawtext=fontfile='{FONT_PATH}':textfile='{score_file_path}':reload=1:"
+        f"fontcolor=0x00FF88:fontsize=140:x=(w-text_w)/2:y=(h-text_h)/2-60:"
+        f"box=1:boxcolor=black@0.85:boxborderw=28"
+    )
+    # Website URL at bottom
+    vf_parts.append(
+        f"drawtext=fontfile='{FONT_PATH}':text='{website}':"
+        f"fontcolor=white:fontsize=42:x=(w-text_w)/2:y=h-105:"
+        f"box=1:boxcolor=0x0044BB@0.9:boxborderw=14"
+    )
+    # Watch Live text
+    vf_parts.append(
+        f"drawtext=fontfile='{FONT_PATH}':text='Watch Live - Link in Description':"
+        f"fontcolor=yellow:fontsize=40:x=(w-text_w)/2:y=h-170:"
+        f"box=1:boxcolor=black@0.75:boxborderw=12"
+    )
+    vf_parts.append("format=yuv420p")
+
+    vf_filter = ",".join(vf_parts)
 
     cmd = [
-        "ffmpeg",
-        "-re", # Read input at native frame rate
-        "-loop", "1", "-i", BG_IMAGE,
+        "ffmpeg", "-y",
+        # Infinite color background (no image file dependency)
+        "-f", "lavfi", "-i", "color=c=0x0d1b2a:s=1920x1080:r=25",
+        # Loop crowd audio infinitely
         "-stream_loop", "-1", "-i", CROWD_AUDIO,
-        "-filter_complex", filter_complex,
+        "-vf", vf_filter,
         "-c:v", "libx264",
         "-preset", "veryfast",
-        "-b:v", "1500k",
-        "-maxrate", "1500k",
-        "-bufsize", "3000k",
-        "-g", "60", # Keyframe interval (2 seconds at 30fps)
+        "-b:v", "2000k",
+        "-maxrate", "2000k",
+        "-bufsize", "4000k",
+        "-g", "50",
         "-c:a", "aac",
         "-b:a", "128k",
         "-f", "flv",
         stream_url
     ]
 
-    logger.info("Starting FFmpeg stream...")
-    return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    log_path = score_file_path.replace(".txt", "_ffmpeg.log")
+    logger.info(f"Starting FFmpeg stream → {stream_url[:40]}...")
+    return subprocess.Popen(cmd, stdout=open(log_path, "w"), stderr=subprocess.STDOUT)
 
 
 if __name__ == "__main__":
@@ -145,7 +185,7 @@ if __name__ == "__main__":
     if action == "start":
         team_a = sys.argv[3] if len(sys.argv) > 3 else "فريق 1"
         team_b = sys.argv[4] if len(sys.argv) > 4 else "فريق 2"
-        
+
         title = f"🔴 بث مباشر: {team_a} ضد {team_b}"
         desc = (
             f"🔴 بث مباشر: {team_a} ضد {team_b}\n\n"
@@ -153,12 +193,20 @@ if __name__ == "__main__":
             f"#يلا_شوت #بث_مباشر #{team_a.replace(' ','_')} #{team_b.replace(' ','_')}"
         )
 
+        # Write team names to files (avoids shell quoting issues with Arabic)
+        team_a_file = os.path.join(BASE_DIR, f"live_team_a_{match_id}.txt")
+        team_b_file = os.path.join(BASE_DIR, f"live_team_b_{match_id}.txt")
+        with open(team_a_file, "w", encoding="utf-8") as f:
+            f.write(team_a)
+        with open(team_b_file, "w", encoding="utf-8") as f:
+            f.write(team_b)
+
         meta = {}
 
         # ── 1. Try YouTube Live first (primary) ────────────────────────────────
         yt_rtmp, yt_broadcast_id, yt_watch_url = start_youtube_live(title, desc)
         if yt_rtmp:
-            proc = run_ffmpeg_stream(yt_rtmp, score_file)
+            proc = run_ffmpeg_stream(yt_rtmp, score_file, team_a_file, team_b_file)
             meta["pid"] = proc.pid
             meta["yt_broadcast_id"] = yt_broadcast_id
             meta["yt_watch_url"] = yt_watch_url
@@ -182,7 +230,7 @@ if __name__ == "__main__":
             logger.warning("YouTube Live failed — trying Facebook Live as fallback...")
             fb_rtmp, fb_vid_id = start_facebook_live(title, desc)
             if fb_rtmp:
-                proc = run_ffmpeg_stream(fb_rtmp, score_file)
+                proc = run_ffmpeg_stream(fb_rtmp, score_file, team_a_file, team_b_file)
                 meta["pid"] = proc.pid
                 meta["live_video_id"] = fb_vid_id
                 logger.info(f"✅ Facebook Live stream started | Video ID: {fb_vid_id}")

@@ -236,6 +236,27 @@ def create_youtube_live(title: str, description: str, scheduled_start_time: str 
         return None
 
 
+def transition_broadcast(broadcast_id: str, status: str, access_token: str) -> bool:
+    """Transition a YouTube broadcast to testing or live."""
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    url = (f"https://www.googleapis.com/youtube/v3/liveBroadcasts/transition"
+           f"?broadcastStatus={status}&id={broadcast_id}&part=id,status")
+    try:
+        r = requests.post(url, headers=headers, json={}, timeout=20)
+        if r.status_code == 200:
+            logger.info(f"✅ Broadcast transitioned to '{status}'")
+            return True
+        else:
+            logger.warning(f"Transition to '{status}' returned {r.status_code}: {r.text[:200]}")
+            return False
+    except Exception as e:
+        logger.error(f"Transition exception: {e}")
+        return False
+
+
 def end_youtube_live(broadcast_id: str) -> bool:
     """Transition a YouTube Live Broadcast to 'complete' state."""
     access_token = get_access_token()
