@@ -549,6 +549,48 @@ body.lang-en .ad-card-text {
 .mc-watch-btn:hover { background: var(--accent2); }
 .mc-watch-btn.finished { background: #334155; }
 
+/* Stream availability dot on match card */
+.mc-stream-dot {
+    display: inline-block;
+    font-size: 0.7rem;
+    color: #22c55e;
+    font-weight: 700;
+    margin-top: 4px;
+    animation: pulse 1.5s infinite;
+}
+
+/* Red fallback external stream button */
+.external-stream-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 18px;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: #fff;
+    font-family: 'Cairo', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border-radius: 12px;
+    text-decoration: none;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: pulse-red 1.8s infinite;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+.external-stream-btn:hover {
+    transform: scale(1.04);
+    box-shadow: 0 6px 28px rgba(220, 38, 38, 0.6);
+    color: #fff;
+}
+@keyframes pulse-red {
+    0%, 100% { box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4); }
+    50%       { box-shadow: 0 4px 36px rgba(220, 38, 38, 0.75); }
+}
+
 /* ══════════════════════════════════════════════════
    VIDEO PLAYER SECTION
 ══════════════════════════════════════════════════ */

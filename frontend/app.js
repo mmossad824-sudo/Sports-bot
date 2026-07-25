@@ -52,6 +52,7 @@ const TRANSLATIONS = {
         predictTimes:   'مرات لبدء المشاهدة المجانية',
         watchNow:       'شاهد الآن مجاناً',
         news:           'الأخبار',
+        watchLiveFallback: '🔴 شاهد البث الأصلي مباشرة',
     },
     en: {
         siteName:       'Yalla Shoot',
@@ -103,6 +104,7 @@ const TRANSLATIONS = {
         predictTimes:   'times to watch for free',
         watchNow:       'Watch Now Free',
         news:           'News',
+        watchLiveFallback: '🔴 Watch Original Live Stream',
     }
 };
 
@@ -652,6 +654,12 @@ function renderMatchCard(match) {
         : `<i class="fa-solid fa-circle-play"></i> شاهد الآن`;
     const watchClass = isFinished ? 'mc-watch-btn finished' : 'mc-watch-btn';
 
+    // Stream availability indicator: green dot if stream exists for live matches
+    const hasStream = !!(match.stream_url && (isLive || isHalf));
+    const streamDot = hasStream
+        ? `<span class="mc-stream-dot" title="البث متوفر">🟢 البث متوفر</span>`
+        : '';
+
     return `
         <div class="match-card" onclick="openMatchStream('${escapedId}')">
             <div class="mc-thumb">
@@ -673,11 +681,13 @@ function renderMatchCard(match) {
                     <i class="fa-solid fa-tv"></i>
                     <span>${match.channel || match.tournament || ''}</span>
                 </div>
+                ${streamDot}
             </div>
             <button class="${watchClass}">${watchText}</button>
         </div>
     `;
 }
+
 
 
 // Open Live Stream Player — shows click-trap modal first
@@ -783,6 +793,14 @@ function initLiveChat(match) {
 }
 
 // Internal: actually load the stream (called after click-trap completes)
+// Helper: check if a match status means it is currently live
+function isLiveStatus(status) {
+    if (!status) return false;
+    const s = status.toLowerCase();
+    return s === 'جارية الآن' || s.includes('الشوط') || s.includes('بين الشوطين') ||
+           s === 'live' || s === '1st half' || s === '2nd half' || s === 'half time';
+}
+
 async function _loadMatchStream(matchId) {
     const playerSection = document.getElementById('player-section');
     const iframeContainer = document.getElementById('iframe-player-container');
@@ -883,13 +901,30 @@ async function _loadMatchStream(matchId) {
             return;
         }
         
-        // Handle upcoming/live matches
+        // Handle upcoming/live matches with no streams yet
         if (sources.length === 0) {
             placeholder.classList.remove('hidden');
             placeholder.querySelector('h3').innerText = 'البث المباشر غير متوفر حالياً';
             placeholder.querySelector('p').innerText = 'يبدأ البث قبل انطلاق المباراة بـ 15 دقيقة. يرجى الانتظار والتحديث.';
             document.getElementById('sources-tabs').classList.add('hidden');
-            
+
+            // RED FALLBACK BUTTON — redirect to original source if match has a link or channel
+            const fallbackContainer = document.getElementById('no-stream-placeholder');
+            const existingFallback = document.getElementById('external-stream-btn');
+            if (existingFallback) existingFallback.remove();
+
+            const fallbackLink = match.link || null;
+            if (fallbackLink && (isLiveStatus(match.status))) {
+                const btn = document.createElement('a');
+                btn.id = 'external-stream-btn';
+                btn.href = fallbackLink;
+                btn.target = '_blank';
+                btn.rel = 'noopener noreferrer';
+                btn.className = 'external-stream-btn';
+                btn.innerHTML = '<i class="fa-solid fa-circle-play"></i> 🔴 شاهد البث الأصلي مباشرة';
+                fallbackContainer.appendChild(btn);
+            }
+
             // Start polling even if no streams are found yet (upcoming match starts soon)
             startBackgroundPolling();
             return;
