@@ -194,7 +194,7 @@ def build_ffmpeg_cmd(rtmp_url: str) -> list:
         vf_args = ["-vf", dt_chain]
 
     output_args = [
-        "-c:v", "libx264", "-preset", "veryfast",
+        "-c:v", "libx264", "-preset", "ultrafast",
         "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
         "-g", "50", "-keyint_min", "25",
         "-c:a", "aac", "-b:a", "128k",
