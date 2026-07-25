@@ -913,7 +913,10 @@ async function _loadMatchStream(matchId) {
             const existingFallback = document.getElementById('external-stream-btn');
             if (existingFallback) existingFallback.remove();
 
-            const fallbackLink = match.link || null;
+            let fallbackLink = match.link || null;
+            if (fallbackLink && fallbackLink.includes('yallakora.com') && fallbackLink.includes('/match/')) {
+                fallbackLink = fallbackLink.replace('/match/', '/stream/');
+            }
             if (fallbackLink && (isLiveStatus(match.status))) {
                 const btn = document.createElement('a');
                 btn.id = 'external-stream-btn';

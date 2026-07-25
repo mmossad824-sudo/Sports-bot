@@ -150,6 +150,7 @@ def search_stream_embed(team_a, team_b, channel="", match_link=""):
         pattern_urls = [
             f"https://yalla-shoot.tv/{a_slug}-vs-{b_slug}/",
             f"https://kooralive.net/{a_slug}-{b_slug}/",
+            f"https://www.yallashoot.video/video/{a_slug}-vs-{b_slug}-live-stream/",
         ]
         for url in pattern_urls:
             r = requests.get(url, headers=HEADERS, timeout=8, allow_redirects=True)
