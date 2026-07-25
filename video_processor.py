@@ -32,25 +32,32 @@ def process_video_for_shorts(input_path: str, output_path: str, title: str = "ي
 
     if platform == "youtube":
         # YouTube PiP (Picture-in-Picture) evasion: heavy blur bg, tiny scaled foreground placed in the top right corner
-        fg_filter = "[fg]fps=20,hflip,eq=contrast=1.2:brightness=0.05,scale=400:-2,setpts=PTS/1.12[fg_scaled]"
-        overlay_cmd = "[bg_blurred][fg_scaled]overlay=main_w-overlay_w-30:250[base]"
+        filter_complex = (
+            "[0:v]split=2[bg][fg];"
+            "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=50:5,eq=brightness=-0.1,setpts=PTS/1.09[bg_blurred];"
+            "[fg]fps=20,hflip,eq=contrast=1.2:brightness=0.05,scale=400:-2,setpts=PTS/1.12[fg_scaled];"
+            "[bg_blurred][fg_scaled]overlay=main_w-overlay_w-30:250[base];"
+            "[base]drawbox=y=0:color=black@0.9:width=iw:height=220:t=fill,"
+            "drawbox=y=ih-220:color=black@0.9:width=iw:height=220:t=fill[v_boxed];"
+            f"[v_boxed]drawtext=fontfile='{FONT_PATH}':text='{clean_title}':fontsize=50:fontcolor=white:x=(w-text_w)/2:y=80,"
+            f"drawtext=fontfile='{FONT_PATH}':text='yalla-shoot-today.vercel.app':fontsize=38:fontcolor=yellow:x=(w-text_w)/2:y=h-150[v_final]"
+        )
         audio_filter = "atempo=1.12,asetrate=44100*1.15,aresample=44100,chorus=0.5:0.9:50|60:0.4|0.32:0.25|0.4:2|2.3,volume=1.5"
     else:
-        # Facebook Nuclear evasion: slight flip, extreme color, static noise, centered large shrink
-        fg_filter = "[fg]hflip,eq=contrast=1.3:brightness=0.04:saturation=1.5,noise=alls=10:allf=t+u,scale=950:-2,setpts=PTS/1.09[fg_scaled]"
-        overlay_cmd = "[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2[base]"
+        # Facebook Nuclear evasion: Rain effect overlay, top yellow text on black box, blurred background
+        filter_complex = (
+            "[0:v]split=2[bg][fg];"
+            "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=50:5,eq=brightness=-0.1,setpts=PTS/1.09[bg_blurred];"
+            "[fg]hflip,eq=contrast=1.3:brightness=0.04:saturation=1.5,scale=950:-2,setpts=PTS/1.09[fg_scaled];"
+            "[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2[base];"
+            "color=c=black:s=1080x1920,format=gray,noise=alls=100:allf=t+u,boxblur=0:25,eq=contrast=5:brightness=0[rain];"
+            "[base][rain]blend=all_mode=screen:all_opacity=0.4[v_boxed_pre];"
+            "[v_boxed_pre]drawbox=y=0:color=black@0.9:width=iw:height=220:t=fill,"
+            "drawbox=y=ih-220:color=black@0.9:width=iw:height=220:t=fill[v_boxed];"
+            f"[v_boxed]drawtext=fontfile='{FONT_PATH}':text='{clean_title}':fontsize=50:fontcolor=yellow:x=(w-text_w)/2:y=80,"
+            f"drawtext=fontfile='{FONT_PATH}':text='شاهد البث المباشر على موقعنا مجاناً':fontsize=40:fontcolor=white:x=(w-text_w)/2:y=h-150[v_final]"
+        )
         audio_filter = "atempo=1.09,asetrate=44100*1.12,aresample=44100,volume=1.3"
-
-    filter_complex = (
-        "[0:v]split=2[bg][fg];"
-        "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=50:5,eq=brightness=-0.1,setpts=PTS/1.09[bg_blurred];"
-        f"{fg_filter};"
-        f"{overlay_cmd};"
-        "[base]drawbox=y=0:color=black@0.9:width=iw:height=220:t=fill,"
-        "drawbox=y=ih-220:color=black@0.9:width=iw:height=220:t=fill[v_boxed];"
-        f"[v_boxed]drawtext=fontfile='{FONT_PATH}':text='YALLA SHOOT TODAY':fontsize=50:fontcolor=white:x=(w-text_w)/2:y=80,"
-        f"drawtext=fontfile='{FONT_PATH}':text='yalla-shoot-today.vercel.app':fontsize=38:fontcolor=yellow:x=(w-text_w)/2:y=h-150[v_final]"
-    )
 
     cmd = [
         "ffmpeg",
