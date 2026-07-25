@@ -63,6 +63,15 @@ def job_stream_update():
     except Exception as e:
         print(f"Error checking and sending Telegram alerts: {e}")
 
+
+def job_auto_live_stream():
+    """Scheduled job to auto-manage the YouTube live stream."""
+    try:
+        from live_manager import auto_manage_live_streams
+        auto_manage_live_streams()
+    except Exception as e:
+        print(f"[AutoLive] Error in auto_manage_live_streams: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
@@ -103,8 +112,10 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(job_morning_scrape, 'cron', hour=5, minute=0)
     # Schedule Noon Broadcast: Every day at 12:00 PM (noon) Cairo time
     scheduler.add_job(broadcast_schedule, 'cron', hour=12, minute=0)
-    # Schedule Stream Link Updater: Every 1 minute
+    # Schedule Stream Link Updater (real streams for all matches): Every 1 minute
     scheduler.add_job(job_stream_update, 'interval', minutes=1)
+    # Schedule Auto YouTube Live Stream Orchestrator: Every 5 minutes
+    scheduler.add_job(job_auto_live_stream, 'interval', minutes=5, id='auto_yt_live')
     
     scheduler.start()
     print("Scheduler started successfully.")
@@ -136,6 +147,67 @@ def read_root():
         "timestamp": datetime.now().isoformat(),
         "database_exists": os.path.exists(DB_PATH)
     }
+
+# ── Admin Endpoints (للتحكم اليدوي في البث من السحابة) ──────────────────────
+
+@app.post("/api/admin/trigger_test_stream")
+def trigger_test_stream(background_tasks: BackgroundTasks):
+    """تشغيل بث يوتيوب تجريبي من السيرفر السحابي للتحقق من عمله."""
+    def _run():
+        try:
+            from live_manager import start_stream, watch_loop, is_stream_alive, increment_todays_yt_count
+            import threading
+            if is_stream_alive():
+                print("[TestStream] Already running.")
+                return
+            meta = start_stream(
+                team_a="ريال مدريد",
+                team_b="برشلونة",
+                score="0 - 0",
+                logo_a_url="https://crests.football-data.org/86.png",
+                logo_b_url="https://crests.football-data.org/81.png",
+                match_id="test"
+            )
+            if meta:
+                increment_todays_yt_count()
+                threading.Thread(target=watch_loop, daemon=True).start()
+                print(f"[TestStream] Live at {meta['watch_url']}")
+        except Exception as e:
+            print(f"[TestStream] Error: {e}")
+    background_tasks.add_task(_run)
+    return {"status": "starting", "message": "Test stream triggered on cloud. Check YouTube in ~30 seconds."}
+
+
+@app.post("/api/admin/stop_stream")
+def stop_stream_endpoint():
+    """إيقاف أي بث يوتيوب يعمل حالياً على السيرفر."""
+    try:
+        from live_manager import stop_stream
+        stop_stream()
+        return {"status": "stopped"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/admin/stream_status")
+def stream_status():
+    """التحقق من حالة البث التفاعلي الحالي."""
+    try:
+        from live_manager import is_stream_alive, META_FILE, count_todays_yt_streams, MAX_YT_STREAMS_PER_DAY
+        import json as _json
+        alive = is_stream_alive()
+        meta = {}
+        if alive and os.path.exists(META_FILE):
+            meta = _json.load(open(META_FILE))
+        return {
+            "alive": alive,
+            "today_streams": count_todays_yt_streams(),
+            "daily_limit": MAX_YT_STREAMS_PER_DAY,
+            "meta": meta
+        }
+    except Exception as e:
+        return {"alive": False, "error": str(e)}
+
 
 @app.get("/api/matches")
 def get_matches():

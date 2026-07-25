@@ -40,19 +40,37 @@ TEAM_B_FILE = "/tmp/ys_live_team_b.txt"
 ARAB_PRIORITY = {
     # المنتخبات العربية — أعلى أولوية
     "مصر": 100, "المغرب": 95, "الجزائر": 90, "تونس": 88, "السعودية": 85,
+    "قطر": 82, "الإمارات": 80, "ليبيا": 78, "سوريا": 76,
     "egypt": 100, "morocco": 95, "algeria": 90, "tunisia": 88, "saudi": 85,
-    # الأندية السعودية
-    "الهلال": 80, "النصر": 78, "الاتحاد": 75, "الاهلي السعودي": 73,
-    "al hilal": 80, "al nassr": 78,
+    "qatar": 82, "uae": 80, "libya": 78, "syria": 76,
+    # الأندية السعودية والخليجية
+    "الهلال": 82, "النصر": 80, "الاتحاد": 76, "الشباب": 73, "القادسية": 68,
+    "al hilal": 82, "al nassr": 80, "al ittihad": 76,
     # الأندية المصرية
-    "الأهلي": 85, "الزمالك": 80, "الاهلي": 85,
-    "al ahly": 85, "zamalek": 80,
-    # الأندية الأوروبية الكبيرة (جمهور عربي كبير)
-    "ريال مدريد": 75, "برشلونة": 72, "ليفربول": 70, "مانشستر": 68,
-    "real madrid": 75, "barcelona": 72, "liverpool": 70, "manchester": 68,
-    "chelsea": 65, "arsenal": 65, "psg": 62, "باريس": 62,
-    "بايرن": 60, "bayern": 60, "يوفنتوس": 58, "juventus": 58,
+    "الأهلي": 88, "الزمالك": 84, "الاهلي": 88, "بيراميدز": 70,
+    "al ahly": 88, "zamalek": 84,
+    # الأندية الأوروبية الكبيرة (جمهور عربي ضخم)
+    "ريال مدريد": 90, "برشلونة": 88, "ليفربول": 80, "مانشستر سيتي": 78,
+    "مانشستر يونايتد": 75, "باريس سان جيرمان": 76, "باريس": 76,
+    "أتلتيكو مدريد": 72, "أتليتكو": 72, "أرسنال": 74, "تشيلسي": 72,
+    "بايرن": 70, "يوفنتوس": 68, "انتر ميلان": 65, "ميلان": 65,
+    "بوروسيا دورتموند": 63, "بنفيكا": 60,
+    "real madrid": 90, "barcelona": 88, "liverpool": 80, "manchester city": 78,
+    "manchester united": 75, "paris saint-germain": 76, "psg": 76,
+    "atletico madrid": 72, "arsenal": 74, "chelsea": 72,
+    "bayern": 70, "juventus": 68, "inter milan": 65, "ac milan": 65,
+    "borussia dortmund": 63, "benfica": 60,
+    # بطولات مميزة
+    "دوري أبطال": 95, "champions league": 95,
+    "يورو": 92, "كأس العالم": 99, "world cup": 99, "كأس أمم أفريقيا": 90,
 }
+
+# الحد الأدنى للأولوية لكي يُنشأ بث يوتيوب تفاعلي (فرق مشهورة فقط)
+MIN_PRIORITY_FOR_YT = 60
+# الحد الأقصى لبثوث يوتيوب في اليوم الواحد (1 أو 2)
+MAX_YT_STREAMS_PER_DAY = 2
+# ملف عداد البثوص اليومية
+YT_DAILY_COUNT_FILE = "/tmp/ys_yt_daily_count.json"
 
 def get_match_priority(team_a: str, team_b: str) -> int:
     """تقييم أولوية المباراة حسب الجمهور العربي"""
@@ -89,8 +107,31 @@ def download_logo(url: str, path: str) -> bool:
         return False
 
 
+def count_todays_yt_streams() -> int:
+    """كم مرة شغّلنا بث يوتيوب اليوم؟"""
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    if not os.path.exists(YT_DAILY_COUNT_FILE):
+        return 0
+    try:
+        data = json.load(open(YT_DAILY_COUNT_FILE))
+        if data.get("date") != today:
+            return 0  # يوم جديد
+        return data.get("count", 0)
+    except Exception:
+        return 0
+
+
+def increment_todays_yt_count():
+    """زيادة عداد بثوث اليوم"""
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    count = count_todays_yt_streams() + 1
+    with open(YT_DAILY_COUNT_FILE, "w") as f:
+        json.dump({"date": today, "count": count}, f)
+    logger.info(f"📊 اليوم تم فتح {count} بث يوتيوب.")
+
+
 def pick_best_match() -> dict | None:
-    """جلب المباريات الحالية واختيار أفضل واحدة"""
+    """جلب المباريات الحالية واختيار أفضل واحدة — للفرق المشهورة فقط"""
     try:
         r = requests.get(f"{HF_API}/api/matches", timeout=10)
         if r.status_code != 200:
@@ -101,19 +142,19 @@ def pick_best_match() -> dict | None:
         logger.error(f"Cannot fetch matches: {e}")
         return None
 
-    # Filter: live or starting in < 30 min
-    from datetime import timedelta
-    now = datetime.utcnow()
+    # Filter: live or starting in < 30 min + minimum popularity
     candidates = []
     for m in matches:
         status = (m.get("status") or "").lower()
         if status in ("live", "1st half", "2nd half", "half time", "مباشر",
-                      "الشوط الأول", "الشوط الثاني", "استراحة", "جاري"):
+                      "الشوط الأول", "الشوط الثاني", "استراحة", "جاري",
+                      "جارية الآن"):
             priority = get_match_priority(m.get("teamA", ""), m.get("teamB", ""))
-            candidates.append((priority, m))
+            if priority >= MIN_PRIORITY_FOR_YT:  # فقط الفرق المشهورة
+                candidates.append((priority, m))
 
     if not candidates:
-        logger.info("No live matches found.")
+        logger.info("No popular live matches found for YT stream.")
         return None
 
     # Sort by priority descending, return top match
@@ -121,6 +162,50 @@ def pick_best_match() -> dict | None:
     score, match = candidates[0]
     logger.info(f"Selected: {match['teamA']} vs {match['teamB']} (priority={score})")
     return match
+
+
+def auto_manage_live_streams():
+    """
+    الدالة الرئيسية للجدولة التلقائية:
+    - تتحقق من حد البثوث اليومية (MAX_YT_STREAMS_PER_DAY)
+    - تختار أفضل مباراة مشهورة جارية
+    - تشغل البث إذا لم يكن يعمل
+    - توقف البث إذا انتهت المباراة
+    """
+    import sqlite3 as _sq
+    from scraper import DB_PATH as _DB
+
+    # هل البث شغال بالفعل؟
+    if is_stream_alive():
+        logger.info("auto_manage: stream already running, skipping.")
+        return
+
+    # هل تجاوزنا الحد اليومي؟
+    today_count = count_todays_yt_streams()
+    if today_count >= MAX_YT_STREAMS_PER_DAY:
+        logger.info(f"auto_manage: daily limit reached ({today_count}/{MAX_YT_STREAMS_PER_DAY}).")
+        return
+
+    # اختر أفضل مباراة
+    match = pick_best_match()
+    if not match:
+        logger.info("auto_manage: no popular match to stream.")
+        return
+
+    logger.info(f"🚀 auto_manage: Starting YT stream for {match['teamA']} vs {match['teamB']}")
+    meta = start_stream(
+        team_a=match.get("teamA", ""),
+        team_b=match.get("teamB", ""),
+        score=f"{match.get('scoreA','0')} - {match.get('scoreB','0')}",
+        logo_a_url=match.get("logoA", ""),
+        logo_b_url=match.get("logoB", ""),
+        match_id=match.get("id", "")
+    )
+    if meta:
+        increment_todays_yt_count()
+        logger.info(f"✅ auto_manage: stream live at {meta['watch_url']}")
+        # Start watch loop in a daemon thread so scheduler returns immediately
+        threading.Thread(target=watch_loop, daemon=True).start()
 
 
 def build_ffmpeg_cmd(rtmp_url: str) -> list:
