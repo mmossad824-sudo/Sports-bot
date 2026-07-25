@@ -354,10 +354,10 @@ def scrape_yallakora(date_str=None):
         print(f"Error scraping schedule: {e}")
         return []
 
-def search_stream_embed(team_a, team_b, channel=""):
+def search_stream_embed(team_a, team_b, channel="", link=""):
     # Call the Vercel search proxy to bypass Hugging Face Space firewall blocks
     import urllib.parse
-    url = f"https://yalla-shoot-today.vercel.app/api/search_streams?teamA={urllib.parse.quote(team_a)}&teamB={urllib.parse.quote(team_b)}&channel={urllib.parse.quote(channel)}"
+    url = f"https://yalla-shoot-today.vercel.app/api/search_streams?teamA={urllib.parse.quote(team_a)}&teamB={urllib.parse.quote(team_b)}&channel={urllib.parse.quote(channel)}&link={urllib.parse.quote(link)}"
     try:
         print(f"Calling Vercel stream search proxy for {team_a} VS {team_b} (channel: {channel})...")
         response = requests.get(url, timeout=15)
@@ -389,7 +389,7 @@ def update_live_streams():
     cairo_today = cairo_now.strftime("%Y-%m-%d")
     
     cursor.execute("""
-        SELECT id, teamA, teamB, stream_type, stream_url, channel, status, time 
+        SELECT id, teamA, teamB, stream_type, stream_url, channel, status, time, link
         FROM matches 
         WHERE (status = 'جارية الآن' OR status = 'لم تبدأ' OR status LIKE '%الشوط%' OR status LIKE '%بين%') 
           AND (match_date = ? OR match_date IS NULL)
@@ -404,7 +404,17 @@ def update_live_streams():
     print(f"Checking stream links for {len(active_matches)} active/upcoming matches...")
     
     updated_count = 0
-    for match_id, team_a, team_b, current_type, current_url, channel, status, time_str in active_matches:
+    for row in active_matches:
+        match_id = row[0]
+        team_a = row[1]
+        team_b = row[2]
+        current_type = row[3]
+        current_url = row[4]
+        channel = row[5]
+        status = row[6]
+        time_str = row[7]
+        match_link = row[8] if len(row) > 8 else ""
+
         # Determine if we should search for streams now (if live or starting in < 30 minutes)
         should_update = False
         if status == 'جارية الآن' or 'الشوط' in status or 'بين' in status:
@@ -429,7 +439,7 @@ def update_live_streams():
             continue
             
         print(f"Updating stream links for {team_a} VS {team_b}...")
-        stype, surl = search_stream_embed(team_a, team_b, channel)
+        stype, surl = search_stream_embed(team_a, team_b, channel, match_link)
         
         # Parse existing sources
         existing_sources = []

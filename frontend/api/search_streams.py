@@ -4,378 +4,199 @@ from bs4 import BeautifulSoup
 import urllib.parse
 import re
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-SYNONYMS = {
-    "كوت ديفوار": "ساحل العاج",
-    "ساحل العاج": "كوت ديفوار",
-    "أمريكا": "الولايات المتحدة",
-    "الولايات المتحدة": "أمريكا",
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'Accept-Language': 'ar-EG,ar;q=0.9,en;q=0.8',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Referer': 'https://www.google.com/',
 }
 
 TRANSLATIONS = {
-    "برشلونة": "barcelona",
-    "ريال مدريد": "real madrid",
-    "أتلتيكو مدريد": "atletico madrid",
-    "أتليتكو مدريد": "atletico madrid",
-    "ليفربول": "liverpool",
-    "مانشستر سيتي": "manchester city",
-    "مانشستر يونايتد": "manchester united",
-    "أرسنال": "arsenal",
-    "ارسنال": "arsenal",
-    "تشيلسي": "chelsea",
-    "توتنهام": "tottenham",
-    "بايرن ميونخ": "bayern",
-    "بايرن": "bayern",
-    "باريس سان جيرمان": "psg",
-    "باريس": "psg",
-    "يوفنتوس": "juventus",
-    "إنتر ميلان": "inter",
-    "انتر ميلان": "inter",
-    "ميلان": "ac milan",
-    "روما": "roma",
-    "نابولي": "napoli",
-    "بروسيا دورتموند": "dortmund",
-    "دورتموند": "dortmund",
-    "أياكس": "ajax",
-    "اياكس": "ajax",
-    "النرويج": "norway",
-    "فرنسا": "france",
-    "اليابان": "japan",
-    "السويد": "sweden",
-    "تونس": "tunisia",
-    "هولندا": "netherlands",
-    "باراجواي": "paraguay",
-    "باراغواي": "paraguay",
-    "أستراليا": "australia",
-    "تركيا": "turkey",
-    "أمريكا": "usa",
-    "السنغال": "senegal",
-    "العراق": "iraq",
-    "بلجيكا": "belgium",
-    "إسبانيا": "spain",
-    "اسبانيا": "spain",
-    "إنجلترا": "england",
-    "انجلترا": "england",
-    "البرتغال": "portugal",
-    "كرواتيا": "croatia",
-    "الأرجنتين": "argentina",
-    "الارجنتين": "argentina",
-    "البرازيل": "brazil",
-    "المغرب": "morocco",
-    "هايتى": "haiti",
-    "هايتي": "haiti",
-    "إسكتلندا": "scotland",
-    "اسكتلندا": "scotland",
-    "التشيك": "czech",
-    "المكسيك": "mexico",
-    "جنوب أفريقيا": "south africa",
-    "جنوب افريقيا": "south africa",
-    "كوريا الجنوبية": "south korea",
-    "إكوادور": "ecuador",
-    "اكوادور": "ecuador",
-    "أوروغواي": "uruguay",
-    "أوروجواي": "uruguay",
-    "إيطاليا": "italy",
+    "برشلونة": "barcelona", "ريال مدريد": "real-madrid",
+    "أتلتيكو مدريد": "atletico-madrid", "أتليتكو مدريد": "atletico-madrid",
+    "ليفربول": "liverpool", "مانشستر سيتي": "manchester-city",
+    "مانشستر يونايتد": "manchester-united", "أرسنال": "arsenal",
+    "تشيلسي": "chelsea", "توتنهام": "tottenham",
+    "بايرن": "bayern-munich", "باريس سان جيرمان": "psg",
+    "باريس": "psg", "يوفنتوس": "juventus",
+    "إنتر ميلان": "inter-milan", "انتر ميلان": "inter-milan",
+    "ميلان": "ac-milan", "روما": "roma", "نابولي": "napoli",
+    "دورتموند": "dortmund", "أياكس": "ajax",
+    "الأهلي": "al-ahly", "الزمالك": "zamalek",
+    "الهلال": "al-hilal", "النصر": "al-nassr",
+    "الاتحاد": "al-ittihad",
+    "ستاندر لياج": "standard-liege", "ستاندرد": "standard-liege",
+    "سبورتنج لشبونة": "sporting-cp", "سبورتنج": "sporting-cp",
+    "موناكو": "monaco", "لاس بالماس": "las-palmas",
 }
 
+# Channels to known stream embed URLs
+CHANNEL_STREAMS = {
+    'bein sports 1':   'https://cdn.akarela.com/bein1.php',
+    'bein sport 1':    'https://cdn.akarela.com/bein1.php',
+    'bein sports 2':   'https://cdn.akarela.com/bein2.php',
+    'bein sport 2':    'https://cdn.akarela.com/bein2.php',
+    'bein sports 3':   'https://cdn.akarela.com/bein3.php',
+    'bein sport 3':    'https://cdn.akarela.com/bein3.php',
+    'bein sports 4':   'https://cdn.akarela.com/bein4.php',
+    'bein sports hd':  'https://cdn.akarela.com/bein1.php',
+    'on sport':        'https://cdn.akarela.com/onsport.php',
+    'on time sport':   'https://cdn.akarela.com/ontimesport.php',
+    'on time sport 1': 'https://cdn.akarela.com/ontimesport.php',
+    'ssc 1':           'https://cdn.akarela.com/ssc1.php',
+    'ssc':             'https://cdn.akarela.com/ssc1.php',
+    'ssc sport':       'https://cdn.akarela.com/ssc1.php',
+    'ssc sport 1':     'https://cdn.akarela.com/ssc1.php',
+    'ssc 2':           'https://cdn.akarela.com/ssc2.php',
+    'mbc sport':       'https://cdn.akarela.com/mbcsport.php',
+    'mbc sport 1':     'https://cdn.akarela.com/mbcsport.php',
+    'mbc sport 2':     'https://cdn.akarela.com/mbcsport2.php',
+    'al nahar sport':  'https://cdn.akarela.com/alnaharsport.php',
+    'nahar sport':     'https://cdn.akarela.com/alnaharsport.php',
+    'ksa sport':       'https://cdn.akarela.com/ksasport.php',
+    'ksa sports':      'https://cdn.akarela.com/ksasport.php',
+    'abu dhabi sport': 'https://cdn.akarela.com/abudhabi.php',
+    'dmc sport':       'https://cdn.akarela.com/dmcsport.php',
+    'cbc sport':       'https://cdn.akarela.com/cbcsport.php',
+    'al kass':         'https://cdn.akarela.com/alkass.php',
+    'al kass sport':   'https://cdn.akarela.com/alkass.php',
+}
+
+SKIP_DOMAINS = ['google', 'facebook', 'twitter', 'doubleclick',
+                'analytics', 'adsterra', 'taboola', 'disqus',
+                'whatsapp', 'telegram', 'shareaholic', 'addthis',
+                'googletagmanager', 'googlesyndication']
+
+
 def normalize(text):
-    if not text:
-        return ""
+    if not text: return ""
     text = re.sub(r'[أإآ]', 'ا', text)
     text = re.sub(r'ة', 'ه', text)
-    text = re.sub(r'\s+', '', text)
-    return text.strip().lower()
+    return re.sub(r'\s+', ' ', text).strip().lower()
 
-def match_team(team, text_normalized):
-    norm_team = normalize(team)
-    if norm_team in text_normalized:
-        return True
-        
-    # Try stripping "ال" prefix
-    if norm_team.startswith("ال"):
-        without_al = norm_team[2:]
-        if without_al in text_normalized:
-            return True
-            
-    # Try adding "ال" prefix
-    else:
-        with_al = "ال" + norm_team
-        if with_al in text_normalized:
-            return True
-            
-    # Try matching synonyms with/without "ال"
-    for k, v in SYNONYMS.items():
-        if k in team:
-            norm_syn = normalize(v)
-            if norm_syn in text_normalized:
-                return True
-            if norm_syn.startswith("ال"):
-                without_al = norm_syn[2:]
-                if without_al in text_normalized:
-                    return True
+
+def get_en_slug(team):
+    return TRANSLATIONS.get(team, team.lower().replace(' ', '-'))
+
+
+def extract_iframes(html_content, label="بث"):
+    sources = []
+    soup = BeautifulSoup(html_content, 'html.parser')
+    for iframe in soup.find_all('iframe'):
+        src = iframe.get('src', '').strip()
+        if not src or 'about:blank' in src or src.startswith('javascript'):
+            continue
+        if src.startswith('//'): src = 'https:' + src
+        if not src.startswith('http'): continue
+        if any(d in src for d in SKIP_DOMAINS): continue
+        sources.append({"name": label, "type": "iframe", "url": src})
+    return sources
+
+
+def search_stream_embed(team_a, team_b, channel="", match_link=""):
+    sources = []
+    seen = set()
+
+    def add(src, name):
+        url = src if isinstance(src, str) else src.get('url')
+        if url and url not in seen:
+            seen.add(url)
+            if isinstance(src, str):
+                sources.append({"name": name, "type": "iframe", "url": url})
             else:
-                with_al = "ال" + norm_syn
-                if with_al in text_normalized:
-                    return True
-                    
-    return False
+                src['name'] = name
+                sources.append(src)
 
-def clean_channel_name(channel):
-    if not channel:
-        return ""
-    # Normalize to lowercase and remove noise words like HD, SD
-    chan = channel.lower()
-    chan = chan.replace("hd", "").replace("sd", "")
-    # Standardize spaces and keep it clean
-    chan = re.sub(r'\s+', ' ', chan).strip()
-    return chan
+    # ── 1. Channel-based stream (most reliable) ───────────────────────────────
+    if channel:
+        ch_low = channel.lower().strip()
+        for ch_key, embed_url in CHANNEL_STREAMS.items():
+            if ch_key in ch_low or ch_low in ch_key:
+                add(embed_url, f"قناة {channel} - بث مباشر 🔴")
+                break
 
-def is_iframe_embeddable(url, headers, depth=0):
-    # Always return True to avoid false negatives. Streaming sites block datacenter IPs (like Vercel)
-    # with Cloudflare (403/503), but load perfectly in the user's browser.
-    return True
+    # ── 2. Scrape yallakora match page for embedded iframes ───────────────────
+    if match_link and 'yallakora.com' in match_link:
+        try:
+            r = requests.get(match_link, headers=HEADERS, timeout=12)
+            if r.status_code == 200:
+                for s in extract_iframes(r.content, "يلا كورة - بث مباشر"):
+                    add(s['url'], s['name'])
+        except Exception as e:
+            print(f"[proxy] yallakora scrape: {e}")
 
-def fetch_url(url, headers):
+    # ── 3. Try known Arabic stream aggregators ────────────────────────────────
+    a_slug = get_en_slug(team_a)
+    b_slug = get_en_slug(team_b)
+
+    agg_urls = [
+        f"https://www.livescore.com/en/football/",
+        f"https://arab-hd.net/live-{a_slug}-vs-{b_slug}/",
+        f"https://7m.cn/arabic/live/",
+    ]
+    for url in agg_urls:
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=8, allow_redirects=True)
+            if r.status_code == 200 and len(r.text) > 2000:
+                for s in extract_iframes(r.content, "سيرفر بث عربي"):
+                    if len(sources) < 6:
+                        add(s['url'], s['name'])
+        except Exception:
+            pass
+
+    # ── 4. Search yalla-shoot.tv via pattern ─────────────────────────────────
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            return url, response.text, response.content
-    except Exception as e:
-        print(f"[Search Proxy] Error fetching {url}: {e}")
-    return url, None, None
-
-def search_stream_embed(team_a, team_b, channel=""):
-    raw_sources = []
-    seen_urls = set()
-    
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-        'Accept-Language': 'ar,en-US;q=0.7,en;q=0.3'
-    }
-    
-    # 1. Direct Scraping of yallasootlive.com (Primary & Most Stable)
-    try:
-        print(f"[Search Proxy] Scraping yallasootlive.com directly for {team_a} VS {team_b}...")
-        r = requests.get('https://yallasootlive.com/', headers=headers, timeout=12)
-        if r.status_code == 200:
-            soup = BeautifulSoup(r.content, 'html.parser')
-            match_cards = soup.find_all(class_='AY_Match')
-            
-            for div in match_cards:
-                text_normalized = normalize(div.text)
-                
-                if match_team(team_a, text_normalized) or match_team(team_b, text_normalized):
-                    links = div.find_all('a')
-                    for l in links:
-                        href = l.get('href')
-                        if href and href not in seen_urls:
-                            seen_urls.add(href)
-                            print(f"[Search Proxy] Found matching card on yallasootlive.com: {href}")
-                            # Fetch player page
-                            try:
-                                pr = requests.get(href, headers=headers, timeout=12)
-                                if pr.status_code == 200:
-                                    psoup = BeautifulSoup(pr.content, 'html.parser')
-                                    iframes = psoup.find_all('iframe')
-                                    for iframe in iframes:
-                                        src = iframe.get('src')
-                                        if src:
-                                            src = src.strip()
-                                            if src.startswith('//'):
-                                                src = f"https:{src}"
-                                            if src not in seen_urls:
-                                                seen_urls.add(src)
-                                                raw_sources.append({
-                                                    "name": "سيرفر كورة لايف الرئيسي (متعدد الجودات)",
-                                                    "type": "iframe",
-                                                    "url": src,
-                                                    "parent_url": href
-                                                })
-                                                # Fetch nested player iframe if available (e.g. depoooo.com)
-                                                try:
-                                                    ar = requests.get(src, headers=headers, timeout=12)
-                                                    if ar.status_code == 200:
-                                                        asoup = BeautifulSoup(ar.content, 'html.parser')
-                                                        niframes = asoup.find_all('iframe')
-                                                        for nif in niframes:
-                                                            nsrc = nif.get('src')
-                                                            if nsrc:
-                                                                nsrc = nsrc.strip()
-                                                                if nsrc.startswith('//'):
-                                                                    nsrc = f"https:{nsrc}"
-                                                                if nsrc not in seen_urls:
-                                                                    seen_urls.add(nsrc)
-                                                                    raw_sources.append({
-                                                                        "name": "بث مباشر متعدد الجودات (سيرفر خارجي)",
-                                                                        "type": "iframe",
-                                                                        "url": nsrc,
-                                                                        "parent_url": href
-                                                                    })
-                                                except Exception as ex:
-                                                    print(f"[Search Proxy] Error fetching nested iframe: {ex}")
-                            except Exception as ex:
-                                print(f"[Search Proxy] Error fetching match detail from yallasootlive: {ex}")
-    except Exception as e:
-        print(f"[Search Proxy] Error scraping yallasootlive: {e}")
-
-    # 2. Fallback search on DuckDuckGo if we need more links
-    if len(raw_sources) < 3:
-        # Translate to English if translation exists to get better English stream results
-        eng_a = TRANSLATIONS.get(team_a.strip(), team_a)
-        eng_b = TRANSLATIONS.get(team_b.strip(), team_b)
-        
-        queries = [
-            f"{team_a} ضد {team_b} بث مباشر يلا شوت الاسطورة كورة لايف",
-            f"yalla shoot {eng_a} vs {eng_b} streamonsport daddylive livehd7",
-            f"{eng_a} vs {eng_b} live stream totalsportek buffstreams",
-            f"{team_a} ضد {team_b} كورة فور لايف في العارضة كورة سيتي"
+        pattern_urls = [
+            f"https://yalla-shoot.tv/{a_slug}-vs-{b_slug}/",
+            f"https://kooralive.net/{a_slug}-{b_slug}/",
         ]
-        
-        # Append channel queries if channel is available
-        clean_chan = clean_channel_name(channel)
-        if clean_chan:
-            print(f"[Search Proxy] Adding channel queries for: {clean_chan}")
-            queries.append(f"بث مباشر قناة {clean_chan} كورة لايف يلا شوت")
-            queries.append(f"koora live {clean_chan} live stream")
-        
-        found_urls = []
-        search_urls = [f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(q)}" for q in queries]
-        
-        with ThreadPoolExecutor(max_workers=len(search_urls)) as executor:
-            futures = {executor.submit(fetch_url, su, headers): su for su in search_urls}
-            for future in as_completed(futures):
-                _, html, _ = future.result()
-                if html:
-                    soup = BeautifulSoup(html, 'html.parser')
-                    result_links = soup.find_all('a', class_='result__url')
-                    for a in result_links:
-                        href = a.get('href')
-                        if href:
-                            parsed = urllib.parse.urlparse(href)
-                            query_params = urllib.parse.parse_qs(parsed.query)
-                            actual_url = query_params.get('uddg', [href])[0]
-                            
-                            blacklist = ['youtube.com', 'facebook.com', 'twitter.com', 'instagram.com', 'wikipedia.org', 'yallakora.com', 'kooora.com', 'aljazeera.net', 'fifa.com', 'pinterest.com', 'linkedin.com']
-                            if not any(x in actual_url for x in blacklist):
-                                if actual_url not in found_urls:
-                                    found_urls.append(actual_url)
-                                    
-        # Sort found URLs by user's requested 50 source domains (priority sites)
-        priority_keywords = [
-            'daddylive', 'cricfree', 'vipleague', 'streamonsport', 'footybite', 
-            'rojadirecta', 'livetv', 'buffstreams', 'crackstreams', 'firstrowsports', 
-            'stream2watch', 'vipbox', 'soccersreams', 'totalsportek', 'hesgoal', 
-            'mamahd', 'sportrar', 'livehd7', 'yalla-shoot', 'yallasoot', 'korastart',
-            'koora-live', 'kooralive', 'koracity', 'yallashoot', 'kora-online', 
-            'mykora', 'koragoal', 'felarda', 'korastar', 'kora4live', 'egybestsport', 
-            'kora-plus', 'hikora', 'shoot-live', 'koraweb', 'as-koora', 'askoora'
-        ]
-        
-        def get_priority(url):
-            u = url.lower()
-            for index, kw in enumerate(priority_keywords):
-                if kw in u:
-                    return index  # higher priority (lower index in list)
-            return 9999
-            
-        found_urls.sort(key=get_priority)
-        candidate_urls = found_urls[:8]
-        if candidate_urls:
-            hls_count = 0
-            iframe_count = 0
-            
-            with ThreadPoolExecutor(max_workers=len(candidate_urls)) as executor:
-                futures = {executor.submit(fetch_url, cu, headers): cu for cu in candidate_urls}
-                for future in as_completed(futures):
-                    url, html, content = future.result()
-                    if not html:
-                        continue
-                        
-                    soup = BeautifulSoup(content, 'html.parser')
-                    
-                    # Look for iframe players
-                    iframes = soup.find_all('iframe')
-                    for iframe in iframes:
-                        src = iframe.get('src')
-                        if src:
-                            src = src.strip()
-                            if src.startswith('//'):
-                                src = f"https:{src}"
-                            if not src.startswith('http') and not src.startswith('https'):
-                                continue
-                            if 'about:blank' in src or 'javascript:' in src:
-                                continue
-                            if any(x in src for x in ['google', 'facebook', 'twitter', 'youtube', 'doubleclick', 'analytics', 'adsterra', 'googletagmanager', 'whatsapp', 'telegram']):
-                                continue
-                            if src not in seen_urls:
-                                seen_urls.add(src)
-                                iframe_count += 1
-                                raw_sources.append({
-                                    "name": f"سيرفر خارجي {iframe_count} (إطار)",
-                                    "type": "iframe",
-                                    "url": src,
-                                    "parent_url": url
-                                })
-                                
-                    # Look for direct m3u8 HLS streams (CORS protected, keep as backup)
-                    m3u8_links = re.findall(r'(https?://[^\s"\',]+\.m3u8[^\s"\',]*)', html)
-                    if m3u8_links:
-                        for hls_url in m3u8_links:
-                            hls_url = hls_url.replace(r'\u0026', '&').replace('\\u0026', '&')
-                            hls_url = re.sub(r'[\s"\'\\,]+$', '', hls_url)
-                            if not any(x in hls_url for x in ['logo', 'icon', 'image', 'banner', 'png', 'jpg']):
-                                if hls_url not in seen_urls:
-                                    seen_urls.add(hls_url)
-                                    hls_count += 1
-                                    raw_sources.append({
-                                        "name": f"سيرفر بث احتياطي {hls_count} (HLS)",
-                                        "type": "hls",
-                                        "url": hls_url
-                                    })
-                                    
-    # 3. Filter raw_sources in parallel to verify CSP/XFO embedding safety
-    verified_sources = []
-    
-    def check_embeddable(src_obj):
-        if src_obj["type"] == "iframe":
-            if not is_iframe_embeddable(src_obj["url"], headers):
-                print(f"[Embed Check] Discarding blocked iframe: {src_obj['url']}")
-                return None
-        return src_obj
-        
-    with ThreadPoolExecutor(max_workers=max(1, len(raw_sources))) as check_executor:
-        check_futures = [check_executor.submit(check_embeddable, s) for s in raw_sources]
-        for f in as_completed(check_futures):
-            res = f.result()
-            if res:
-                verified_sources.append(res)
-                
-    # Sort verified sources to put working iframes first
-    verified_sources.sort(key=lambda x: 0 if x["type"] == "iframe" else 1)
-    
-    return verified_sources[:6]
+        for url in pattern_urls:
+            r = requests.get(url, headers=HEADERS, timeout=8, allow_redirects=True)
+            if r.status_code == 200:
+                for s in extract_iframes(r.content, "سيرفر يلا شوت"):
+                    if len(sources) < 6:
+                        add(s['url'], s['name'])
+    except Exception:
+        pass
+
+    # ── 5. Always add yallakora match link as iframe fallback ─────────────────
+    # Yallakora itself has a watch page that embeds streams
+    if match_link and len(sources) < 3:
+        # Construct watch/stream page URL
+        watch_url = match_link.replace('/match/', '/stream/') if '/match/' in match_link else match_link
+        if watch_url not in seen:
+            seen.add(watch_url)
+            sources.append({"name": "🔴 المصدر الأصلي - يلا كورة", "type": "redirect", "url": match_link})
+
+    print(f"[proxy] Total sources for {team_a} vs {team_b}: {len(sources)}")
+    return sources[:8]
+
 
 class handler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass  # Suppress default logging
+
     def do_GET(self):
         parsed_url = urllib.parse.urlparse(self.path)
         query = urllib.parse.parse_qs(parsed_url.query)
-        
-        team_a = query.get('teamA', [None])[0]
-        team_b = query.get('teamB', [None])[0]
-        channel = query.get('channel', [""])[0]
-        
+
+        team_a   = query.get('teamA',   [None])[0]
+        team_b   = query.get('teamB',   [None])[0]
+        channel  = query.get('channel', [""])[0] or ""
+        link     = query.get('link',    [""])[0] or ""
+
         if not team_a or not team_b:
             self.send_response(400)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({"error": "Missing teamA or teamB"}).encode('utf-8'))
+            self.wfile.write(json.dumps({"error": "Missing teamA or teamB"}).encode())
             return
-            
-        sources = search_stream_embed(team_a, team_b, channel)
-        
+
+        srcs = search_stream_embed(team_a, team_b, channel, link)
+
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(json.dumps(sources).encode('utf-8'))
+        self.wfile.write(json.dumps(srcs).encode())
