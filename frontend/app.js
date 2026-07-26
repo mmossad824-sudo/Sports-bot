@@ -1212,12 +1212,14 @@ function playSource(source, index) {
         videoPlayerDiv.classList.add('hidden');
         iframeContainer.classList.remove('hidden');
         
-        // Load ALL iframe sources directly in the browser (not through proxy)
-        // The proxy uses Vercel datacenter IPs which are blocked by stream providers
-        // Users' browsers can access these streams directly
+        // Use proxy for external streams to bypass X-Frame-Options, but allow YouTube/Facebook directly
         iframe.removeAttribute('referrerpolicy');
         iframe.removeAttribute('sandbox');
-        iframe.src = source.url;
+        if (source.url.includes('youtube.com') || source.url.includes('youtu.be') || source.url.includes('facebook.com') || source.url.includes('scorebat.com')) {
+            iframe.src = source.url;
+        } else {
+            iframe.src = `${API_BASE_URL}/api/proxy?url=${encodeURIComponent(source.url)}`;
+        }
     }
 }
 
