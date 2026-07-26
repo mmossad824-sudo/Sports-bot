@@ -274,11 +274,11 @@ def search_stream_embed(team_a, team_b, channel="", match_link=""):
     # ── 6. Fallback YallaShoot 24/7 channels if no match streams found ────────
     if len(sources) < 2:
         fallback_servers = [
-            ("يلا شوت (سيرفر مباشر 1)", "https://vertex.st/ch.php?id=46"),
-            ("يلا شوت (سيرفر مباشر 2)", "https://s1.nexa.st/ch.php?id=46"),
-            ("يلا شوت (سيرفر مباشر 3)", "https://s2.kora.st/ch.php?id=46"),
-            ("يلا شوت (سيرفر مباشر 4)", "https://w1.sportsonlinee.click/channels/hd/hd9.php"),
-            ("يلا شوت (سيرفر مباشر 5)", "https://dlhd.st//stream/stream-3046.php")
+            ("يلا شوت (سيرفر 1 - ممتاز 🌟)", "https://dlhd.st//stream/stream-3046.php"),
+            ("يلا شوت (سيرفر 2 - HD ⚡)", "https://w1.sportsonlinee.click/channels/hd/hd9.php"),
+            ("يلا شوت (سيرفر 3 - HD 📺)", "https://w1.sportsonlinee.click/channels/hd/hd1.php"),
+            ("يلا شوت (سيرفر 4 - HD 🎯)", "https://w1.sportsonlinee.click/channels/hd/hd2.php"),
+            ("يلا شوت (سيرفر 5 - رئيسي 🔴)", "https://w1.sportsonlinee.click/channels/pt/sporttv1.php")
         ]
         for name, url in fallback_servers:
             add(url, name)
