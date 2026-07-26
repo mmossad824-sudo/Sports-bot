@@ -107,6 +107,12 @@ def scrape_arabic_homepage(team_a, team_b):
 
     t_a, t_b = clean(team_a), clean(team_b)
     
+    def is_match(team, text):
+        if team in text: return True
+        w = team.split()[0] if team.split() else team
+        if len(w) >= 4: return w[:4] in text
+        return w in text
+
     # 1. Yalla Shoot Video Homepage Scrape
     try:
         url = "https://www.yallashoot.video/"
@@ -116,7 +122,7 @@ def scrape_arabic_homepage(team_a, team_b):
             for a in soup.find_all('a', href=True):
                 title = clean(a.get('title', ''))
                 text = clean(a.text)
-                if (t_a in title or t_a in text) and (t_b in title or t_b in text):
+                if (is_match(t_a, title) or is_match(t_a, text)) and (is_match(t_b, title) or is_match(t_b, text)):
                     match_url = a['href']
                     m_r = requests.get(match_url, headers=HEADERS, timeout=10)
                     if m_r.status_code == 200:
