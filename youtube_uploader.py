@@ -194,6 +194,46 @@ def create_youtube_live(title: str, description: str, scheduled_start_time: str 
         bc_data = r.json()
         if r.status_code not in (200, 201) or "id" not in bc_data:
             logger.error(f"Failed to create broadcast: {r.text[:300]}")
+            # Fallback: reuse existing 'ready' broadcast if quota/rate limit is reached
+            try:
+                list_url = "https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet,status,contentDetails&mine=true"
+                lr = requests.get(list_url, headers=headers, timeout=20)
+                if lr.status_code == 200:
+                    items = lr.json().get("items", [])
+                    for item in items:
+                        if item.get("status", {}).get("lifeCycleStatus") in ("ready", "created"):
+                            b_id = item["id"]
+                            bound_st_id = item.get("contentDetails", {}).get("boundStreamId")
+                            if bound_st_id:
+                                st_res = requests.get(f"https://www.googleapis.com/youtube/v3/liveStreams?part=cdn&id={bound_st_id}", headers=headers, timeout=20)
+                                if st_res.status_code == 200 and st_res.json().get("items"):
+                                    st_item = st_res.json()["items"][0]
+                                    ingest = st_item["cdn"]["ingestionInfo"]
+                                    rtmp_addr = ingest.get("rtmpsIngestionAddress") or ingest.get("ingestionAddress", "").replace("rtmp://a.rtmp.", "rtmps://a.rtmps.")
+                                    st_key = ingest["streamName"]
+                                    logger.info(f"🔄 Reusing existing ready YouTube broadcast: {b_id}")
+                                    try:
+                                        up_body = {
+                                            "id": b_id,
+                                            "snippet": {
+                                                "title": title[:100],
+                                                "description": description[:5000],
+                                                "scheduledStartTime": item["snippet"].get("scheduledStartTime")
+                                            }
+                                        }
+                                        requests.put("https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet", headers=headers, json=up_body, timeout=15)
+                                    except Exception as ex:
+                                        logger.warning(f"Could not update broadcast title: {ex}")
+                                    return {
+                                        "broadcast_id": b_id,
+                                        "stream_id": bound_st_id,
+                                        "stream_key": st_key,
+                                        "rtmp_url": rtmp_addr,
+                                        "rtmp_full": f"{rtmp_addr}/{st_key}",
+                                        "watch_url": f"https://www.youtube.com/watch?v={b_id}"
+                                    }
+            except Exception as fe:
+                logger.error(f"Fallback broadcast reuse failed: {fe}")
             return None
         broadcast_id = bc_data["id"]
         logger.info(f"✅ YouTube Broadcast created: {broadcast_id}")
