@@ -262,7 +262,7 @@ def build_ffmpeg_cmd(rtmp_url: str) -> list:
     inputs = [
         "ffmpeg", "-y",
         "-re",  # Real-time speed — CRITICAL to prevent YouTube disconnect
-        "-f", "lavfi", "-i", "color=c=0x0d1b2a:s=1920x1080:r=25",
+        "-f", "lavfi", "-i", "color=c=0x0d1b2a:s=1920x1080:r=25:d=36000",
         "-stream_loop", "-1", "-i", CROWD_AUDIO,
     ]
 
