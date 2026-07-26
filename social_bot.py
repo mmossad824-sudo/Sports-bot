@@ -776,6 +776,8 @@ def fetch_rss_news(max_per_feed: int = 3) -> list[dict]:
                     
                 news_id = hashlib.md5(title.encode()).hexdigest()[:12]
                 full_content = extract_article_content(link)
+                if not full_content or len(full_content.strip()) < 50:
+                    full_content = f"{desc}\n\nتابعوا آخر أخبار ومباريات كرة القدم اليوم لحظة بلحظة عبر موقعنا الرسمي."
                 
                 # Default image if available in RSS (enclosure)
                 image_url = ""
@@ -783,20 +785,19 @@ def fetch_rss_news(max_per_feed: int = 3) -> list[dict]:
                 if enclosure is not None and enclosure.get("url"):
                     image_url = enclosure.get("url")
                 
-                # Send to our backend
-                if full_content:
-                    try:
-                        requests.post(HF_API_URL, json={
-                            "id": news_id,
-                            "title": title,
-                            "content": full_content,
-                            "source": feed["name"],
-                            "link": link,
-                            "pub_date": pub,
-                            "image_url": image_url
-                        }, timeout=10)
-                    except Exception as e:
-                        logger.warning(f"Failed to post news to backend: {e}")
+                # Send to our backend ALWAYS
+                try:
+                    requests.post(HF_API_URL, json={
+                        "id": news_id,
+                        "title": title,
+                        "content": full_content,
+                        "source": feed["name"],
+                        "link": link,
+                        "pub_date": pub,
+                        "image_url": image_url
+                    }, timeout=10)
+                except Exception as e:
+                    logger.warning(f"Failed to post news to backend: {e}")
                 
                 all_items.append({
                     "title": title,
