@@ -175,9 +175,23 @@ def search_stream_embed(team_a, team_b, channel="", match_link=""):
     sources = []
     seen = set()
 
+    def is_url_alive(url):
+        if not url or not url.startswith('http'):
+            return False
+        try:
+            r = requests.head(url, headers=HEADERS, timeout=1.5, allow_redirects=True)
+            if r.status_code < 400:
+                return True
+            if r.status_code == 405:
+                r_get = requests.get(url, headers=HEADERS, timeout=1.5, stream=True)
+                return r_get.status_code < 400
+            return False
+        except Exception:
+            return True
+
     def add(src, name):
         url = src if isinstance(src, str) else src.get('url')
-        if url and url not in seen:
+        if url and url not in seen and is_url_alive(url):
             seen.add(url)
             if isinstance(src, str):
                 sources.append({"name": name, "type": "iframe", "url": url})

@@ -76,14 +76,15 @@ def job_auto_live_stream():
 async def lifespan(app: FastAPI):
     init_db()
     
-    # Clean up old Moroccan League matches from database
+    # Clean up old matches & Moroccan League matches from database
     try:
+        cleanup_old_data()
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("DELETE FROM matches WHERE tournament LIKE '%المغربي%' OR tournament LIKE '%العرش%'")
         conn.commit()
         conn.close()
-        print("Database cleaned up (Moroccan League matches deleted).")
+        print("Database cleaned up (old matches deleted & database vacuumed).")
     except Exception as e:
         print(f"Error cleaning database: {e}")
         
