@@ -142,6 +142,28 @@ def scrape_arabic_homepage(team_a, team_b):
                             if clean_src not in seen:
                                 seen.add(clean_src)
                                 sources.append({"name": f"يلا شوت فيديو: {clean_name}", "type": "iframe", "url": clean_src})
+                                
+                        # Extract Base64 encoded hash urls (new format)
+                        import base64
+                        b64_matches = re.findall(r'hash=([A-Za-z0-9_\-]+={0,2})', m_r.text)
+                        for h in b64_matches:
+                            try:
+                                h_fixed = h.replace('__', '+').replace('_', '/').replace('-', '+')
+                                h_fixed += '=' * (-len(h_fixed) % 4)
+                                decoded = base64.b64decode(h_fixed).decode('utf-8')
+                                lines = decoded.strip().split('\n')
+                                for i, line in enumerate(lines):
+                                    if '=>' in line:
+                                        parts = line.split('=>')
+                                        if len(parts) >= 2:
+                                            s_name = parts[0].strip()
+                                            s_url = parts[1].strip()
+                                            if s_url.startswith('http') and s_url not in seen:
+                                                seen.add(s_url)
+                                                sources.append({"name": f"يلا شوت فيديو: {s_name}", "type": "iframe", "url": s_url})
+                            except Exception as e:
+                                print(f"[proxy] Base64 decode error: {e}")
+                                
                     break # Found the match, no need to keep searching links
     except Exception as e:
         print(f"[proxy] Smart Scraper error: {e}")
