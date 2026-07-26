@@ -617,8 +617,44 @@ def update_finished_matches_highlights():
     
     # We call our Vercel highlights search proxy to bypass the Hugging Face Space outbound blocks
     website_url = os.getenv("WEBSITE_URL", "https://yalla-shoot-today.vercel.app")
+    from live_manager import ARAB_PRIORITY
+    
+    # Track daily highlights generated
+    import json
+    import os
+    DAILY_LIMIT_FILE = "/tmp/ys_daily_highlights.json"
+    
+    daily_count = 0
+    if os.path.exists(DAILY_LIMIT_FILE):
+        try:
+            with open(DAILY_LIMIT_FILE, "r") as f:
+                data = json.load(f)
+                if data.get("date") == cairo_today:
+                    daily_count = data.get("count", 0)
+        except Exception as e:
+            print(f"[Highlights] Error reading daily limit file: {e}")
+            
+    if daily_count >= 3:
+        print(f"[Highlights] Daily limit of 3 highlights reached for {cairo_today}. Skipping remaining matches.")
+        return
     
     for match_id, team_a, team_b, tournament, stream_url in finished_matches:
+        # Check if either team is in the ARAB_PRIORITY list (famous teams)
+        is_famous = False
+        team_a_clean = team_a.lower().strip()
+        team_b_clean = team_b.lower().strip()
+        for famous_team in ARAB_PRIORITY.keys():
+            if famous_team in team_a_clean or famous_team in team_b_clean:
+                is_famous = True
+                break
+                
+        if not is_famous:
+            print(f"[Highlights] Skipping {team_a} VS {team_b} (Not a famous team in priority list).")
+            continue
+            
+        if daily_count >= 3:
+            print(f"[Highlights] Reached daily limit of 3 highlights. Stopping processing.")
+            break
         # ScoreBat bypassed - User requested YouTube highlights only
         # embed_url = get_scorebat_embed_url(team_a, team_b)
         embed_url = None
@@ -651,8 +687,31 @@ def update_finished_matches_highlights():
                     """, (sources_json, datetime.now().isoformat(), match_id))
                     print(f"[Highlights] Successfully updated highlights for {team_a} VS {team_b}")
                     
-                    # Removed Telegram video upload as per user request
-                    
+                    # NEW: Automatically process and upload the highlight to Social Media!
+                    try:
+                        print(f"[Highlights] Triggering automatic social media highlight upload for {team_a} VS {team_b}...")
+                        import subprocess
+                        import sys
+                        # Run it as a separate background process so it doesn't block the scraper loop
+                        subprocess.Popen([
+                            sys.executable,
+                            os.path.join(os.path.dirname(__file__), "upload_match_highlights.py"),
+                            str(match_id),
+                            team_a,
+                            team_b,
+                            embed_url
+                        ])
+                        
+                        # Increment daily count and save
+                        daily_count += 1
+                        try:
+                            with open(DAILY_LIMIT_FILE, "w") as f:
+                                json.dump({"date": cairo_today, "count": daily_count}, f)
+                        except Exception as e:
+                            print(f"[Highlights] Failed to save daily count: {e}")
+                            
+                    except Exception as e:
+                        print(f"[Highlights] Failed to trigger automatic highlight upload: {e}")
                 else:
                     print(f"[Highlights] Proxy returned empty embed URL for {team_a} VS {team_b}")
             else:
