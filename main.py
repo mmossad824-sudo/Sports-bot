@@ -295,6 +295,26 @@ def test_live_stream_cloud(bg_tasks: BackgroundTasks):
     bg_tasks.add_task(run_test)
     return {"status": "Test live stream launched in the background on the cloud server!"}
 
+@app.get("/api/check_ports")
+def check_ports():
+    import socket
+    results = {}
+    for port in [1935, 443, 80]:
+        try:
+            sock = socket.create_connection(("a.rtmp.youtube.com", port), timeout=3)
+            results[port] = "OPEN"
+            sock.close()
+        except Exception as e:
+            results[port] = f"CLOSED or ERROR: {str(e)}"
+        
+        try:
+            sock = socket.create_connection(("a.rtmps.youtube.com", port), timeout=3)
+            results[f"rtmps_{port}"] = "OPEN"
+            sock.close()
+        except Exception as e:
+            results[f"rtmps_{port}"] = f"CLOSED or ERROR: {str(e)}"
+    return results
+
 @app.post("/api/matches/{match_id}/update")
 def update_match(match_id: str, data: dict):
     if not os.path.exists(DB_PATH):
