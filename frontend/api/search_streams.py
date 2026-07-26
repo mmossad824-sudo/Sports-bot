@@ -94,6 +94,55 @@ def extract_iframes(html_content, label="بث"):
     return sources
 
 
+def scrape_arabic_homepage(team_a, team_b):
+    sources = []
+    seen = set()
+    
+    # Clean up team names to increase match chances
+    def clean(t):
+        t = re.sub(r'الإماراتي|السعودي|المصري', '', t)
+        t = re.sub(r'[أإآ]', 'ا', t)
+        t = re.sub(r'ة', 'ه', t)
+        return t.strip()
+
+    t_a, t_b = clean(team_a), clean(team_b)
+    
+    # 1. Yalla Shoot Video Homepage Scrape
+    try:
+        url = "https://www.yallashoot.video/"
+        r = requests.get(url, headers=HEADERS, timeout=10)
+        if r.status_code == 200:
+            soup = BeautifulSoup(r.text, 'html.parser')
+            for a in soup.find_all('a', href=True):
+                title = clean(a.get('title', ''))
+                text = clean(a.text)
+                if (t_a in title or t_a in text) and (t_b in title or t_b in text):
+                    match_url = a['href']
+                    m_r = requests.get(match_url, headers=HEADERS, timeout=10)
+                    if m_r.status_code == 200:
+                        # Extract iframes
+                        for s in extract_iframes(m_r.content, "يلا شوت فيديو (ذكي)"):
+                            if s['url'] not in seen:
+                                seen.add(s['url'])
+                                sources.append(s)
+                        # Extract json sources
+                        raw_matches = re.findall(r'\"name\":\"([^\"]+)\",\"src\":\"([^\"]+)\"', m_r.text)
+                        for name, src in raw_matches:
+                            try:
+                                clean_name = name.encode('utf-8').decode('unicode_escape')
+                            except Exception:
+                                clean_name = name
+                            clean_src = src.replace('\\/', '/')
+                            if clean_src not in seen:
+                                seen.add(clean_src)
+                                sources.append({"name": f"يلا شوت فيديو: {clean_name}", "type": "iframe", "url": clean_src})
+                    break # Found the match, no need to keep searching links
+    except Exception as e:
+        print(f"[proxy] Smart Scraper error: {e}")
+
+    return sources
+
+
 def search_stream_embed(team_a, team_b, channel="", match_link=""):
     sources = []
     seen = set()
@@ -145,7 +194,13 @@ def search_stream_embed(team_a, team_b, channel="", match_link=""):
         except Exception:
             pass
 
-    # ── 4. Search yalla-shoot.tv via pattern ─────────────────────────────────
+    # ── 4. Smart Arabic Homepage Scraper ──────────────────────────────────────
+    smart_sources = scrape_arabic_homepage(team_a, team_b)
+    for s in smart_sources:
+        if len(sources) < 8:
+            add(s['url'], s['name'])
+
+    # ── 5. Search yalla-shoot.tv via pattern ─────────────────────────────────
     try:
         yalla_video_url = f"https://www.yallashoot.video/video/{a_slug}-vs-{b_slug}-live-stream-25-7-2026/"
         
@@ -184,7 +239,7 @@ def search_stream_embed(team_a, team_b, channel="", match_link=""):
     except Exception:
         pass
 
-    # ── 5. Always add yallakora match link as iframe fallback ─────────────────
+    # ── 6. Always add yallakora match link as iframe fallback ─────────────────
     # Yallakora itself has a watch page that embeds streams
     if match_link and len(sources) < 3:
         # Construct watch/stream page URL
