@@ -163,7 +163,13 @@ def search_stream_embed(team_a, team_b, channel="", match_link=""):
                 src['name'] = name
                 sources.append(src)
 
-    # ── 1. Channel-based stream (most reliable) ───────────────────────────────
+    # ── 1. Smart Arabic Homepage Scraper (يلا شوت فيديو) - اعلى أولوية بناء على طلبك ──
+    smart_sources = scrape_arabic_homepage(team_a, team_b)
+    for s in smart_sources:
+        if len(sources) < 8:
+            add(s['url'], s['name'])
+
+    # ── 2. Channel-based stream (most reliable) ───────────────────────────────
     if channel:
         ch_low = channel.lower().strip()
         for ch_key, embed_url in CHANNEL_STREAMS.items():
@@ -200,11 +206,7 @@ def search_stream_embed(team_a, team_b, channel="", match_link=""):
         except Exception:
             pass
 
-    # ── 4. Smart Arabic Homepage Scraper ──────────────────────────────────────
-    smart_sources = scrape_arabic_homepage(team_a, team_b)
-    for s in smart_sources:
-        if len(sources) < 8:
-            add(s['url'], s['name'])
+    # (Moved to step 1)
 
     # ── 5. Search yalla-shoot.tv via pattern ─────────────────────────────────
     try:
@@ -235,6 +237,8 @@ def search_stream_embed(team_a, team_b, channel="", match_link=""):
         pattern_urls = [
             f"https://yalla-shoot.tv/{a_slug}-vs-{b_slug}/",
             f"https://kooralive.net/{a_slug}-{b_slug}/",
+            f"https://syrialive.net/{a_slug}-{b_slug}/",
+            f"https://syrialive.io/match/{a_slug}-vs-{b_slug}/"
         ]
         for url in pattern_urls:
             r = requests.get(url, headers=HEADERS, timeout=8, allow_redirects=True)
