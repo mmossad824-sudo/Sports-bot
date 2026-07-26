@@ -272,9 +272,9 @@ def build_ffmpeg_cmd(rtmp_url: str) -> list:
     ] + audio_inputs
 
     if has_logo_a:
-        inputs += ["-i", LOGO_A_PATH]
+        inputs += ["-loop", "1", "-i", LOGO_A_PATH]
     if has_logo_b:
-        inputs += ["-i", LOGO_B_PATH]
+        inputs += ["-loop", "1", "-i", LOGO_B_PATH]
 
     # Build filter_complex or simple -vf
     if has_logo_a or has_logo_b:
