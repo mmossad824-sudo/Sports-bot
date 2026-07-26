@@ -274,10 +274,26 @@ def trigger_scrape(background_tasks: BackgroundTasks):
     background_tasks.add_task(job_morning_scrape)
     return {"message": "Scraping task started in the background."}
 
-@app.post("/api/update-streams")
-def trigger_stream_update(background_tasks: BackgroundTasks):
-    background_tasks.add_task(job_stream_update)
-    return {"message": "Stream updating task started in the background."}
+@app.get("/api/update_streams")
+def trigger_stream_update():
+    """Manual trigger to update streams immediately"""
+    job_stream_update()
+    return {"status": "Stream update triggered"}
+
+@app.get("/api/test_live_stream")
+def test_live_stream_cloud(bg_tasks: BackgroundTasks):
+    """Manual trigger to start a test live stream on the cloud server for testing stability"""
+    from live_manager import start_stream
+    def run_test():
+        start_stream(
+            team_a="ريال مدريد", 
+            team_b="برشلونة", 
+            score="0 - 0",
+            match_id="test_cloud_001",
+            real_match_link=f"https://{os.getenv('WEBSITE_URL', 'yalla-shoot-today.vercel.app')}"
+        )
+    bg_tasks.add_task(run_test)
+    return {"status": "Test live stream launched in the background on the cloud server!"}
 
 @app.post("/api/matches/{match_id}/update")
 def update_match(match_id: str, data: dict):
