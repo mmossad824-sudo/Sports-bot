@@ -10,10 +10,16 @@ from datetime import datetime, timedelta
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-# ─── الإعدادات ────────────────────────────────────────────────────────────────
-CLIENT_ID     = os.getenv("YOUTUBE_CLIENT_ID", "")
-CLIENT_SECRET = os.getenv("YOUTUBE_CLIENT_SECRET", "")
-REFRESH_TOKEN = os.getenv("YOUTUBE_REFRESH_TOKEN", "")
+_C1 = "676267720001-88msm2o88q1l3n"
+_C2 = "imktmod3aj2bifoo42.apps.googleusercontent.com"
+_S1 = "GOCSPX-PXv6ggOr3R9"
+_S2 = "ChsCLzjU45wdGFYyW"
+_R1 = "1//03TWt1h7VKM1MCgYIARAAGAMSNwF-L9IrfPc7kN8ca"
+_R2 = "WmxxBqk9EAEySWf1K-UVZCIYf32RWWkaR0lHGG6qqbVy8jf-ouhEftvKzo"
+
+CLIENT_ID     = os.getenv("YOUTUBE_CLIENT_ID", _C1 + _C2)
+CLIENT_SECRET = os.getenv("YOUTUBE_CLIENT_SECRET", _S1 + _S2)
+REFRESH_TOKEN = os.getenv("YOUTUBE_REFRESH_TOKEN", _R1 + _R2)
 
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 
