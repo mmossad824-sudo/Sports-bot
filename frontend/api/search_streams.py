@@ -33,34 +33,34 @@ TRANSLATIONS = {
 
 # Channels to known stream embed URLs
 CHANNEL_STREAMS = {
-    'bein sports 1':   'https://cdn.akarela.com/bein1.php',
-    'bein sport 1':    'https://cdn.akarela.com/bein1.php',
-    'bein sports 2':   'https://cdn.akarela.com/bein2.php',
-    'bein sport 2':    'https://cdn.akarela.com/bein2.php',
-    'bein sports 3':   'https://cdn.akarela.com/bein3.php',
-    'bein sport 3':    'https://cdn.akarela.com/bein3.php',
-    'bein sports 4':   'https://cdn.akarela.com/bein4.php',
-    'bein sports hd':  'https://cdn.akarela.com/bein1.php',
-    'on sport':        'https://cdn.akarela.com/onsport.php',
-    'on time sport':   'https://cdn.akarela.com/ontimesport.php',
-    'on time sport 1': 'https://cdn.akarela.com/ontimesport.php',
-    'ssc 1':           'https://cdn.akarela.com/ssc1.php',
-    'ssc':             'https://cdn.akarela.com/ssc1.php',
-    'ssc sport':       'https://cdn.akarela.com/ssc1.php',
-    'ssc sport 1':     'https://cdn.akarela.com/ssc1.php',
-    'ssc 2':           'https://cdn.akarela.com/ssc2.php',
-    'mbc sport':       'https://cdn.akarela.com/mbcsport.php',
-    'mbc sport 1':     'https://cdn.akarela.com/mbcsport.php',
-    'mbc sport 2':     'https://cdn.akarela.com/mbcsport2.php',
-    'al nahar sport':  'https://cdn.akarela.com/alnaharsport.php',
-    'nahar sport':     'https://cdn.akarela.com/alnaharsport.php',
-    'ksa sport':       'https://cdn.akarela.com/ksasport.php',
-    'ksa sports':      'https://cdn.akarela.com/ksasport.php',
-    'abu dhabi sport': 'https://cdn.akarela.com/abudhabi.php',
-    'dmc sport':       'https://cdn.akarela.com/dmcsport.php',
-    'cbc sport':       'https://cdn.akarela.com/cbcsport.php',
-    'al kass':         'https://cdn.akarela.com/alkass.php',
-    'al kass sport':   'https://cdn.akarela.com/alkass.php',
+    'bein sports 1':   'https://vertex.st/ch.php?id=46',
+    'bein sport 1':    'https://vertex.st/ch.php?id=46',
+    'bein sports 2':   'https://s1.nexa.st/ch.php?id=46',
+    'bein sport 2':    'https://s1.nexa.st/ch.php?id=46',
+    'bein sports 3':   'https://s2.kora.st/ch.php?id=46',
+    'bein sport 3':    'https://s2.kora.st/ch.php?id=46',
+    'bein sports 4':   'https://w1.sportsonlinee.click/channels/hd/hd9.php',
+    'bein sports hd':  'https://vertex.st/ch.php?id=46',
+    'on sport':        'https://vertex.st/ch.php?id=46',
+    'on time sport':   'https://vertex.st/ch.php?id=46',
+    'on time sport 1': 'https://vertex.st/ch.php?id=46',
+    'ssc 1':           'https://s1.nexa.st/ch.php?id=46',
+    'ssc':             'https://s1.nexa.st/ch.php?id=46',
+    'ssc sport':       'https://s1.nexa.st/ch.php?id=46',
+    'ssc sport 1':     'https://s1.nexa.st/ch.php?id=46',
+    'ssc 2':           'https://s2.kora.st/ch.php?id=46',
+    'mbc sport':       'https://vertex.st/ch.php?id=46',
+    'mbc sport 1':     'https://vertex.st/ch.php?id=46',
+    'mbc sport 2':     'https://s1.nexa.st/ch.php?id=46',
+    'al nahar sport':  'https://vertex.st/ch.php?id=46',
+    'nahar sport':     'https://vertex.st/ch.php?id=46',
+    'ksa sport':       'https://vertex.st/ch.php?id=46',
+    'ksa sports':      'https://vertex.st/ch.php?id=46',
+    'abu dhabi sport': 'https://s2.kora.st/ch.php?id=46',
+    'dmc sport':       'https://vertex.st/ch.php?id=46',
+    'cbc sport':       'https://vertex.st/ch.php?id=46',
+    'al kass':         'https://vertex.st/ch.php?id=46',
+    'al kass sport':   'https://vertex.st/ch.php?id=46',
 }
 
 SKIP_DOMAINS = ['google', 'facebook', 'twitter', 'doubleclick',
@@ -271,10 +271,20 @@ def search_stream_embed(team_a, team_b, channel="", match_link=""):
     except Exception:
         pass
 
-    # ── 6. Always add yallakora match link as iframe fallback ─────────────────
-    # Yallakora itself has a watch page that embeds streams
-    if match_link and len(sources) < 3:
-        # Construct watch/stream page URL
+    # ── 6. Fallback YallaShoot 24/7 channels if no match streams found ────────
+    if len(sources) < 2:
+        fallback_servers = [
+            ("يلا شوت (سيرفر مباشر 1)", "https://vertex.st/ch.php?id=46"),
+            ("يلا شوت (سيرفر مباشر 2)", "https://s1.nexa.st/ch.php?id=46"),
+            ("يلا شوت (سيرفر مباشر 3)", "https://s2.kora.st/ch.php?id=46"),
+            ("يلا شوت (سيرفر مباشر 4)", "https://w1.sportsonlinee.click/channels/hd/hd9.php"),
+            ("يلا شوت (سيرفر مباشر 5)", "https://dlhd.st//stream/stream-3046.php")
+        ]
+        for name, url in fallback_servers:
+            add(url, name)
+
+    # ── 7. Always add yallakora match link as iframe fallback ─────────────────
+    if match_link and len(sources) < 8:
         watch_url = match_link.replace('/match/', '/stream/') if '/match/' in match_link else match_link
         if watch_url not in seen:
             seen.add(watch_url)
