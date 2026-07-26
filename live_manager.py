@@ -258,13 +258,18 @@ def build_ffmpeg_cmd(rtmp_url: str) -> list:
     ]
     dt_chain = ",".join(drawtext_filters)
 
+    has_audio = os.path.exists(CROWD_AUDIO)
+    if has_audio:
+        audio_inputs = ["-stream_loop", "-1", "-i", CROWD_AUDIO]
+    else:
+        audio_inputs = ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo"]
+
     # Base inputs
     inputs = [
         "ffmpeg", "-y",
         "-re",  # Real-time speed — CRITICAL to prevent YouTube disconnect
         "-f", "lavfi", "-i", "color=c=0x0d1b2a:s=1920x1080:r=25:d=36000",
-        "-stream_loop", "-1", "-i", CROWD_AUDIO,
-    ]
+    ] + audio_inputs
 
     if has_logo_a:
         inputs += ["-i", LOGO_A_PATH]
