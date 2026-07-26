@@ -393,7 +393,7 @@ def proxy_iframe(url: str):
             head.insert(0, new_base)
             
         # Inject referrer policy to bypass HLS hotlinking check
-        new_meta = soup.new_tag('meta', name='referrer', content='no-referrer')
+        new_meta = soup.new_tag('meta', attrs={'name': 'referrer', 'content': 'no-referrer'})
         head.insert(0, new_meta)
         
         # Strip X-Frame-Options and CSP headers that block embedding
