@@ -210,6 +210,10 @@ def create_youtube_live(title: str, description: str, scheduled_start_time: str 
         stream_id = st_data["id"]
         ingestion = st_data["cdn"]["ingestionInfo"]
         rtmp_url = ingestion["ingestionAddress"]
+        
+        # HuggingFace blocks port 1935 (RTMP). We MUST use RTMPS (port 443)
+        rtmp_url = rtmp_url.replace("rtmp://a.rtmp.", "rtmps://a.rtmps.")
+
         stream_key = ingestion["streamName"]
         logger.info(f"✅ YouTube Stream created: {stream_id} | RTMP: {rtmp_url}")
 
