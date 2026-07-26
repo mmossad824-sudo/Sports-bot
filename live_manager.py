@@ -160,6 +160,8 @@ def pick_best_match() -> dict | None:
     # Sort by priority descending, return top match
     candidates.sort(key=lambda x: x[0], reverse=True)
     score, match = candidates[0]
+    
+    # We should also return the stream URL so we can use it in the description/comment
     logger.info(f"Selected: {match['teamA']} vs {match['teamB']} (priority={score})")
     return match
 
@@ -192,6 +194,14 @@ def auto_manage_live_streams():
         logger.info("auto_manage: no popular match to stream.")
         return
 
+    real_match_link = match.get("url", "")
+    if real_match_link:
+        # If the URL is relative, prepend the website domain
+        if real_match_link.startswith("/"):
+            real_match_link = f"https://{WEBSITE}" + real_match_link
+    else:
+        real_match_link = f"https://{WEBSITE}"
+
     logger.info(f"🚀 auto_manage: Starting YT stream for {match['teamA']} vs {match['teamB']}")
     meta = start_stream(
         team_a=match.get("teamA", ""),
@@ -199,10 +209,15 @@ def auto_manage_live_streams():
         score=f"{match.get('scoreA','0')} - {match.get('scoreB','0')}",
         logo_a_url=match.get("logoA", ""),
         logo_b_url=match.get("logoB", ""),
-        match_id=match.get("id", "")
+        match_id=match.get("id", ""),
+        real_match_link=real_match_link
     )
     if meta:
         increment_todays_yt_count()
+        # Send hype notification
+        from social_bot import send_telegram_alert
+        hype_msg = f"🔥 بدأ البث التفاعلي الآن لمباراة {match.get('teamA')} ضد {match.get('teamB')}!\n\n📺 لمشاهدة البث الحقيقي للمباراة بدون تقطيع: {real_match_link}"
+        send_telegram_alert(hype_msg)
         logger.info(f"✅ auto_manage: stream live at {meta['watch_url']}")
         # Start watch loop in a daemon thread so scheduler returns immediately
         threading.Thread(target=watch_loop, daemon=True).start()
@@ -294,9 +309,9 @@ def build_ffmpeg_cmd(rtmp_url: str) -> list:
 
 def start_stream(team_a: str, team_b: str, score: str = "0 - 0",
                  logo_a_url: str = "", logo_b_url: str = "",
-                 match_id: str = "test") -> dict | None:
+                 match_id: str = "test", real_match_link: str = "") -> dict | None:
     """بدء البث على يوتيوب وإرجاع بيانات البث"""
-    from youtube_uploader import create_youtube_live
+    from youtube_uploader import create_youtube_live, post_youtube_comment
 
     # Write text files
     with open(TEAM_A_FILE, "w", encoding="utf-8") as f: f.write(team_a)
@@ -313,8 +328,8 @@ def start_stream(team_a: str, team_b: str, score: str = "0 - 0",
     title = f"🔴 {team_a} vs {team_b} | بث مباشر | {WEBSITE}"
     desc  = (
         f"🔴 {team_a} ضد {team_b} — بث مباشر\n\n"
-        f"📺 شاهد المباراة بجودة HD بدون تقطيع:\n👉 {WEBSITE_URL}\n\n"
-        f"⚽ يلا شوت — أفضل موقع للمباريات المباشرة\n\n"
+        f"📺 شاهد المباراة بجودة HD بدون تقطيع:\n👉 {real_match_link if real_match_link else WEBSITE_URL}\n\n"
+        f"⚽ يلا شوت — أفضل موقع للمباريات المباشرة: {WEBSITE}\n\n"
         f"#يلا_شوت #بث_مباشر #{team_a.replace(' ','_')} #{team_b.replace(' ','_')}"
     )
 
@@ -328,6 +343,11 @@ def start_stream(team_a: str, team_b: str, score: str = "0 - 0",
     watch_url = result["watch_url"]
     broadcast_id = result["broadcast_id"]
     logger.info(f"✅ Broadcast ready: {watch_url}")
+
+    if broadcast_id:
+        comment_text = f"🔥 شاهد البث الحقيقي للمباراة (بدون تقطيع) عبر الرابط التالي:\n👉 {real_match_link if real_match_link else WEBSITE_URL}"
+        logger.info("📌 Posting pinned comment to YouTube...")
+        post_youtube_comment(broadcast_id, comment_text)
 
     # Build & launch FFmpeg
     cmd = build_ffmpeg_cmd(rtmp)
