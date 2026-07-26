@@ -613,6 +613,9 @@ def update_finished_matches_highlights():
         conn.close()
         return
         
+    import os
+    import json
+
     print(f"[Highlights] Found {len(finished_matches)} finished matches needing highlights.")
     
     # We call our Vercel highlights search proxy to bypass the Hugging Face Space outbound blocks
@@ -620,8 +623,6 @@ def update_finished_matches_highlights():
     from live_manager import ARAB_PRIORITY
     
     # Track daily highlights generated
-    import json
-    import os
     DAILY_LIMIT_FILE = "/tmp/ys_daily_highlights.json"
     
     daily_count = 0
