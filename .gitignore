@@ -7,3 +7,21 @@ yallakora_page.html
 .system_generated/
 test_*.py
 *logs*
+
+# Large test/temp files - never commit
+*.mp4
+*.mp3
+*.wav
+*.avi
+rain_overlay.mp4
+test_evasion.mp4
+test_rain*.mp4
+test*.py
+test*.txt
+create_rain.py
+get_live_url.py
+run_social.sh
+news_*.png
+cloud_matches.json
+.env
+live_score_*.txt
