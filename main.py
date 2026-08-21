@@ -153,30 +153,8 @@ def read_root():
 
 @app.post("/api/admin/trigger_test_stream")
 def trigger_test_stream(background_tasks: BackgroundTasks):
-    """تشغيل بث يوتيوب تجريبي من السيرفر السحابي للتحقق من عمله."""
-    def _run():
-        try:
-            from live_manager import start_stream, watch_loop, is_stream_alive, increment_todays_yt_count
-            import threading
-            if is_stream_alive():
-                print("[TestStream] Already running.")
-                return
-            meta = start_stream(
-                team_a="ريال مدريد",
-                team_b="برشلونة",
-                score="0 - 0",
-                logo_a_url="https://crests.football-data.org/86.png",
-                logo_b_url="https://crests.football-data.org/81.png",
-                match_id="test"
-            )
-            if meta:
-                increment_todays_yt_count()
-                threading.Thread(target=watch_loop, daemon=True).start()
-                print(f"[TestStream] Live at {meta['watch_url']}")
-        except Exception as e:
-            print(f"[TestStream] Error: {e}")
-    background_tasks.add_task(_run)
-    return {"status": "starting", "message": "Test stream triggered on cloud. Check YouTube in ~30 seconds."}
+    """تشغيل بث يوتيوب تجريبي — معطّل لحماية القناة الجديدة. البثوث تشتغل تلقائياً فقط لمباريات حقيقية كبيرة."""
+    return {"status": "disabled", "message": "Test streams are disabled to protect the new YouTube channel. Streams will only start automatically for real top-priority matches."}
 
 
 @app.post("/api/admin/stop_stream")
