@@ -10,12 +10,12 @@ from datetime import datetime, timedelta
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-_C1 = "676267720001-88msm2o88q1l3n"
-_C2 = "imktmod3aj2bifoo42.apps.googleusercontent.com"
-_S1 = "GOCSPX-PXv6ggOr3R9"
-_S2 = "ChsCLzjU45wdGFYyW"
-_R1 = "1//03TWt1h7VKM1MCgYIARAAGAMSNwF-L9IrfPc7kN8ca"
-_R2 = "WmxxBqk9EAEySWf1K-UVZCIYf32RWWkaR0lHGG6qqbVy8jf-ouhEftvKzo"
+_C1 = "468396177718-jrn3afms4t1u"
+_C2 = "ofit2q9j6f194gk8fhrp.apps.googleusercontent.com"
+_S1 = "GOCSPX-FK9E3boYZ"
+_S2 = "aPj4j7zivPx2mRs9syE"
+_R1 = "1//04smsZWACZ4J0CgYIARAAGAQSNwF-L9Ir0i"
+_R2 = "Z_YOoXGyq_kKGom9jMuKkY5RWFhOhiAZ6fUkh3U7WLnfVvqzQxH3tjsPWmuELnNVQ"
 
 CLIENT_ID     = os.getenv("YOUTUBE_CLIENT_ID", _C1 + _C2)
 CLIENT_SECRET = os.getenv("YOUTUBE_CLIENT_SECRET", _S1 + _S2)
