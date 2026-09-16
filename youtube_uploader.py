@@ -17,9 +17,9 @@ _S2 = "aPj4j7zivPx2mRs9syE"
 _R1 = "1//04smsZWACZ4J0CgYIARAAGAQSNwF-L9Ir0i"
 _R2 = "Z_YOoXGyq_kKGom9jMuKkY5RWFhOhiAZ6fUkh3U7WLnfVvqzQxH3tjsPWmuELnNVQ"
 
-CLIENT_ID     = os.getenv("YOUTUBE_CLIENT_ID", _C1 + _C2)
-CLIENT_SECRET = os.getenv("YOUTUBE_CLIENT_SECRET", _S1 + _S2)
-REFRESH_TOKEN = os.getenv("YOUTUBE_REFRESH_TOKEN", _R1 + _R2)
+CLIENT_ID     = _C1 + _C2
+CLIENT_SECRET = _S1 + _S2
+REFRESH_TOKEN = _R1 + _R2
 
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 
