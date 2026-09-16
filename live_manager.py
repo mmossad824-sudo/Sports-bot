@@ -330,11 +330,11 @@ def start_stream(team_a: str, team_b: str, score: str = "0 - 0",
     logger.info(f"Logos: A={'✅' if logo_a_ok else '❌'} | B={'✅' if logo_b_ok else '❌'}")
 
     # Create YouTube broadcast
-    title = f"🔴 {team_a} vs {team_b} | بث مباشر | {WEBSITE}"
+    title = f"🔴 {team_a} vs {team_b} | بث مباشر"
     desc  = (
         f"🔴 {team_a} ضد {team_b} — بث مباشر\n\n"
-        f"📺 شاهد المباراة بجودة HD بدون تقطيع:\n👉 {real_match_link if real_match_link else WEBSITE_URL}\n\n"
-        f"⚽ يلا شوت — أفضل موقع للمباريات المباشرة: {WEBSITE}\n\n"
+        f"📺 شاهد المباراة بجودة HD بدون تقطيع\n\n"
+        f"⚽ يلا شوت — أفضل قناة للمباريات المباشرة\n\n"
         f"#يلا_شوت #بث_مباشر #{team_a.replace(' ','_')} #{team_b.replace(' ','_')}"
     )
 

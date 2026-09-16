@@ -151,10 +151,32 @@ def read_root():
 
 # ── Admin Endpoints (للتحكم اليدوي في البث من السحابة) ──────────────────────
 
-@app.post("/api/admin/trigger_test_stream")
+@app.get("/api/admin/trigger_test_stream")
 def trigger_test_stream(background_tasks: BackgroundTasks):
-    """تشغيل بث يوتيوب تجريبي — معطّل لحماية القناة الجديدة. البثوث تشتغل تلقائياً فقط لمباريات حقيقية كبيرة."""
-    return {"status": "disabled", "message": "Test streams are disabled to protect the new YouTube channel. Streams will only start automatically for real top-priority matches."}
+    """(مؤقت) يختبر فتح بث يوتيوب تلقائي لمباراة وهمية لاختبار عمل الـ API"""
+    try:
+        from youtube_uploader import create_youtube_live
+        bc = create_youtube_live("🔴 بث تجريبي - Yalla Live", "بث لتأكيد عمل النظام التلقائي بنجاح")
+        if not bc:
+            return {"status": "error", "message": "فشل إنشاء البث التجريبي"}
+        
+        # Stop it gracefully after 1 minute in background
+        def close_test_stream(bc_id):
+            import time
+            time.sleep(60)
+            from youtube_uploader import end_youtube_live
+            end_youtube_live(bc_id)
+            print(f"Test stream {bc_id} closed automatically.")
+            
+        background_tasks.add_task(close_test_stream, bc["broadcast_id"])
+        
+        return {
+            "status": "success", 
+            "message": "تم بدء البث التجريبي بنجاح وسيُغلق بعد دقيقة",
+            "youtube_url": bc["watch_url"]
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 @app.post("/api/admin/stop_stream")
